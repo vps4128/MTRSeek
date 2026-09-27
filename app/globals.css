@@ -1,0 +1,408 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* ============================================================================
+   RouteLens — Design Tokens
+   ----------------------------------------------------------------------------
+   Every value in this file comes from DESIGN.md, which is the single source of
+   truth for this project. Nothing here is invented, and no fourth surface tone
+   is introduced. If code and DESIGN.md disagree, the code changes.
+   ============================================================================ */
+
+/* DESIGN.md defines no dark theme: its dark surfaces are explicit bands and
+   cards, never an inverted page. Binding `dark:` to a class that is never
+   applied neutralises the dark variants that ship inside shadcn/ui. */
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* ---- Color · Surface (DESIGN.md → Colors · Surface) --------------------- */
+  --color-canvas: #faf9f5;
+  --color-surface-soft: #f5f0e8;
+  --color-surface-card: #efe9de;
+  --color-surface-cream-strong: #e8e0d2;
+  --color-surface-dark: #181715;
+  --color-surface-dark-elevated: #252320;
+  --color-surface-dark-soft: #1f1e1b;
+  --color-hairline: #e6dfd8;
+  --color-hairline-soft: #ebe6df;
+
+  /* ---- Color · Text ------------------------------------------------------ */
+  --color-ink: #141413;
+  --color-body-strong: #252523;
+  --color-body: #3d3d3a;
+  --color-muted-soft: #8e8b82;
+  --color-on-primary: #ffffff;
+  --color-on-dark: #faf9f5;
+  --color-on-dark-soft: #a09d96;
+
+  /* ---- Color · Brand & Accent -------------------------------------------- */
+  /* Coral. DESIGN.md → Colors: reserved for primary CTAs and full-bleed
+     callout cards, scarce everywhere else. */
+  --color-primary-active: #a9583e;
+  --color-primary-disabled: #e6dfd8;
+  /* DESIGN.md → Colors: teal marks terminal status / active-connection dots,
+     amber marks inline highlights. Both are used sparingly, never as a theme. */
+  --color-accent-teal: #5db8a6;
+  --color-accent-amber: #e8a55a;
+
+  /* ---- Color · Semantic -------------------------------------------------- */
+  --color-success: #5db872;
+  --color-warning: #d4a017;
+  --color-error: #c64545;
+
+  /* ---- Spacing (DESIGN.md → Layout · Spacing System, base unit 4px) ------ */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  --spacing-section: 96px;
+
+  /* ---- Radius (DESIGN.md → Shapes · Border Radius Scale) ----------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-pill: 9999px;
+
+  /* ---- Container (DESIGN.md → Layout · Grid & Container: 1200px) --------- */
+  --container-page: 1200px;
+}
+
+/* Fonts resolve through the next/font variables set on <html> in
+   app/[locale]/layout.tsx, so they are declared inline. DESIGN.md → Typography ·
+   Font Family: Copernicus and StyreneB are licensed and unavailable, so
+   DESIGN.md's own documented substitutes are used — Cormorant Garamond for
+   display, Inter for body.
+
+   ## CJK fallbacks
+
+   DESIGN.md writes a Latin-only type system: none of the three faces above
+   carries a single Chinese glyph, and a browser left to its own devices drops
+   Chinese into whatever sans it defaults to. That would silently break the
+   display/body split DESIGN.md calls unbreakable — Chinese headlines would
+   render in a sans while English ones render in a serif.
+
+   So the chain is completed with the serif and sans the platforms actually
+   ship: Songti SC and PingFang SC on macOS, SimSun and Microsoft YaHei on
+   Windows, Noto Sans/Serif CJK on Linux and Android. A CJK serif for display
+   and a CJK sans for body keeps the hierarchy identical in both languages, and
+   costs nothing to download — these are system faces, not webfonts.
+
+   Latin text is unaffected: every CJK family sits after the Latin ones, and is
+   only reached for codepoints the Latin faces do not cover. */
+@theme inline {
+  --font-display: var(--font-cormorant), "Tiempos Headline", Garamond,
+    "Times New Roman", "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC",
+    "Source Han Serif SC", "Noto Serif SC", serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans SC", sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+  --font-heading: var(--font-cormorant), "Tiempos Headline", Garamond,
+    "Times New Roman", "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC",
+    "Source Han Serif SC", "Noto Serif SC", serif;
+
+  /* shadcn/ui semantic slots, resolved against the palette in :root below.
+     Only these are mapped — no chart, sidebar or dark-theme tokens exist,
+     because DESIGN.md defines no such surfaces. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  /* DESIGN.md's display weight is 400. Its "Note on Font Substitutes" documents
+     Cormorant Garamond at 500 as the closest open-source stand-in for
+     Copernicus, which is optically heavier. This is the single knob for that
+     substitution — set it to 400 to get the nominal token weight. */
+  --font-display-weight: 500;
+
+  /* shadcn/ui semantic slots → DESIGN.md tokens. */
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface-card);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-canvas);
+  --popover-foreground: var(--color-ink);
+  --primary: #cc785c; /* DESIGN.md → Colors · Coral / Primary */
+  --primary-foreground: var(--color-on-primary);
+  --secondary: var(--color-surface-card);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-surface-soft);
+  --muted-foreground: #6c6a64; /* DESIGN.md → Colors · Muted */
+  --accent: var(--color-surface-card);
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-error);
+  --border: var(--color-hairline);
+  --input: var(--color-hairline);
+  --ring: #cc785c;
+  --radius: 8px; /* DESIGN.md → rounded.md */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-canvas text-body;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-disabled);
+    color: var(--color-ink);
+  }
+}
+
+/* ============================================================================
+   Typography scale — DESIGN.md → Typography · Hierarchy
+   ----------------------------------------------------------------------------
+   Declared in a `type-*` namespace rather than Tailwind's `text-*` one on
+   purpose. Class merging treats anything shaped like `text-<word>` as a text
+   colour, so a `text-display-xl` size class is silently discarded the moment it
+   sits next to `text-ink`. `type-*` classes pass through untouched, and each
+   utility carries the full token: family, size, weight, leading and tracking.
+   ============================================================================ */
+
+@utility type-display-xl {
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: var(--font-display-weight);
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+}
+
+@utility type-display-lg {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: var(--font-display-weight);
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+@utility type-display-md {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: var(--font-display-weight);
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+
+@utility type-display-sm {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: var(--font-display-weight);
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+}
+
+/* The mobile step of the hero display. DESIGN.md → Responsive Behaviour:
+   "hero h1 64→32px". Paired with sm:type-display-lg lg:type-display-xl. */
+@utility type-display-hero {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: var(--font-display-weight);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+@utility type-title-lg {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+@utility type-title-md {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+@utility type-title-sm {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+@utility type-body-md {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+@utility type-body-sm {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+@utility type-caption {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+@utility type-caption-uppercase {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* Every IP, ASN, RTT, loss figure, AS path and trace output uses this. */
+@utility type-code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+
+@utility type-button {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+@utility type-nav-link {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+/* ============================================================================
+   Measures
+   ----------------------------------------------------------------------------
+   `ch` is the advance width of the "0" glyph, which makes it a sound way to
+   set a line length in Latin and a misleading one in Chinese: a Han character
+   occupies a full em, while "0" occupies roughly half of one. A 24ch measure
+   that gives English a comfortable two-line heading gives Chinese a
+   twelve-character line that drops a two-character orphan onto the second.
+
+   So each measure carries a Chinese value in `em`, where one em is exactly one
+   Han character. The Latin values are unchanged from what shipped before, so
+   English wrapping is identical; only Chinese gets a different number.
+   ============================================================================ */
+@utility measure-display {
+  max-width: 24ch;
+}
+
+@utility measure-display-tight {
+  max-width: 20ch;
+}
+
+@utility measure-body {
+  max-width: 60ch;
+}
+
+@utility measure-body-tight {
+  max-width: 52ch;
+}
+
+:lang(zh) .measure-display,
+:lang(zh) .measure-display-tight {
+  max-width: 16em;
+}
+
+:lang(zh) .measure-body,
+:lang(zh) .measure-body-tight {
+  max-width: 32em;
+}
+
+/* ============================================================================
+   Chinese display tracking
+   ----------------------------------------------------------------------------
+   DESIGN.md's display sizes carry negative tracking (-1.5px down to -0.3px).
+   That is a Latin device: it closes the gaps a Latin serif leaves between
+   letters. Chinese glyphs are full-width and already sit edge to edge, so the
+   same negative value makes them collide rather than tighten.
+
+   Under `:lang(zh)` the display sizes therefore drop the tracking and keep
+   everything else DESIGN.md specifies — family, size, weight and leading are
+   untouched, so the two locales still share one hierarchy. Only the property
+   that does not transfer is neutralised.
+
+   `caption-uppercase` is deliberately left alone: its tracking is positive, so
+   it reads as intended in both scripts.
+
+   Unlayered on purpose, so it outranks the layered `@utility` rules above
+   regardless of specificity.
+   ============================================================================ */
+:lang(zh) .type-display-xl,
+:lang(zh) .type-display-lg,
+:lang(zh) .type-display-md,
+:lang(zh) .type-display-sm,
+:lang(zh) .type-display-hero {
+  letter-spacing: 0;
+}
+
+/* ============================================================================
+   Hop Details scroll viewport
+   ----------------------------------------------------------------------------
+   A long trace is read by scrolling rather than by paging, so the hop table
+   stops growing at ten rows and scrolls past that. These two values are the
+   whole of that decision; the component reads `--hop-table-max-height` and
+   nothing else, and no script measures anything at runtime.
+
+   Both are derived rather than guessed. A hop row is `type-code`'s line box —
+   14px at its 1.6 leading — plus the `py-xs` its cells carry, plus the hairline
+   its top edge draws. The viewport is that row eleven times over: the header,
+   which is a row of the same height, and the ten hops below it.
+
+   The `xs` step on top is headroom, not decoration. A header row draws no
+   hairline, so it is a pixel shorter than a hop row, and eleven fractional line
+   boxes land the exact edge within a pixel of the eleven-row mark either way.
+   Rounding up keeps a ten-hop trace provably free of a scrollbar, and still
+   cuts an eleventh row off partway — which is what tells a reader the table
+   continues.
+   ============================================================================ */
+:root {
+  --hop-row-height: calc(14px * 1.6 + 2 * var(--spacing-xs) + 1px);
+  --hop-table-max-height: calc(var(--hop-row-height) * 11 + var(--spacing-xs));
+}

@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "title": "RouteLens — MTR / Traceroute 网络路径分析器",
+    "description": "逐跳分析你的网络路径。粘贴 MTR、WinMTR、NextTrace 或 traceroute 输出，了解每一跳的 ASN、ISP 和网络线路。"
+  },
+  "home": {
+    "eyebrow": "网络路径分析器",
+    "title": "逐跳分析你的网络路径。",
+    "description": "粘贴 MTR、WinMTR、NextTrace 或 traceroute 输出，了解每一跳的 ASN、ISP 和网络线路。",
+    "analyze": "开始分析"
+  },
+  "analyzer": {
+    "inputLabel": "MTR 输出",
+    "title": "粘贴你的网络路径",
+    "description": "粘贴 MTR、WinMTR、NextTrace 或 traceroute 输出。RouteLens 会自动识别并解析。",
+    "placeholder": "粘贴 MTR / WinMTR / NextTrace / traceroute 输出...",
+    "analyze": "开始分析",
+    "loadExample": "加载示例",
+    "detectedFormat": "识别格式：{format}",
+    "errors": {
+      "EMPTY_INPUT": "请输入 MTR / WinMTR / NextTrace 数据",
+      "UNRECOGNIZED_FORMAT": "无法识别该网络诊断数据格式",
+      "NO_HOPS": "未找到有效的 Hop 数据"
+    }
+  },
+  "analysis": {
+    "eyebrow": "路径分析",
+    "unknownTarget": "未知目标",
+    "summary": {
+      "line": "{count} 跳 · 丢包 {loss}"
+    },
+    "routeSummary": {
+      "title": "线路概览",
+      "target": "目标",
+      "hopCount": "跃点数",
+      "packetLoss": "丢包率",
+      "avgRtt": "平均 RTT",
+      "bestRtt": "最低 RTT",
+      "worstRtt": "最高 RTT"
+    },
+    "asPath": {
+      "title": "AS Path",
+      "empty": "AS 路径来自 BGP 路由数据，本阶段未接入。各跃点所属的 AS 见跃点详情。"
+    },
+    "hopDetails": {
+      "title": "跃点详情",
+      "index": "跃点",
+      "ip": "IP 地址",
+      "hostname": "主机名",
+      "isp": "ISP",
+      "asn": "ASN",
+      "location": "归属地",
+      "loss": "丢包",
+      "best": "最佳 RTT",
+      "avg": "平均 RTT",
+      "worst": "最差 RTT"
+    },
+    "map": {
+      "title": "地图",
+      "empty": "地图需要地图库，本阶段未引入。各跃点的大致位置见跃点详情。"
+    },
+    "empty": {
+      "title": "暂无分析数据",
+      "description": "请返回输入区域并提交网络诊断结果。",
+      "back": "返回输入区域"
+    }
+  }
+}

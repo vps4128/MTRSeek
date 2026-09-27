@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "title": "RouteLens — MTR / Traceroute Network Analyzer",
+    "description": "Analyze your network path, hop by hop. Paste MTR, WinMTR, NextTrace or traceroute output to understand every hop, ASN, ISP and network route."
+  },
+  "home": {
+    "eyebrow": "NETWORK ROUTE ANALYZER",
+    "title": "Analyze your network path,\nhop by hop.",
+    "description": "Paste MTR, WinMTR, NextTrace or traceroute output to understand every hop, ASN, ISP and network route.",
+    "analyze": "Analyze Route"
+  },
+  "analyzer": {
+    "inputLabel": "Trace output",
+    "title": "Paste your trace",
+    "description": "Paste output from MTR, WinMTR, NextTrace or traceroute. RouteLens will parse it automatically.",
+    "placeholder": "Paste MTR / WinMTR / NextTrace / traceroute output here...",
+    "analyze": "Analyze Route",
+    "loadExample": "Load Example",
+    "detectedFormat": "Detected format: {format}",
+    "errors": {
+      "EMPTY_INPUT": "Enter MTR / WinMTR / NextTrace or traceroute output.",
+      "UNRECOGNIZED_FORMAT": "This network diagnostic format could not be recognized.",
+      "NO_HOPS": "No valid hop data was found."
+    }
+  },
+  "analysis": {
+    "eyebrow": "Route Analysis",
+    "unknownTarget": "Unknown target",
+    "summary": {
+      "line": "{count, plural, one {# hop} other {# hops}} · {loss} packet loss"
+    },
+    "routeSummary": {
+      "title": "Route Summary",
+      "target": "Target",
+      "hopCount": "Hop Count",
+      "packetLoss": "Packet Loss",
+      "avgRtt": "Average RTT",
+      "bestRtt": "Best RTT",
+      "worstRtt": "Worst RTT"
+    },
+    "asPath": {
+      "title": "AS Path",
+      "empty": "An AS path comes from BGP routing data, which this phase does not query. Each hop's own autonomous system is in Hop Details."
+    },
+    "hopDetails": {
+      "title": "Hop Details",
+      "index": "Hop",
+      "ip": "IP Address",
+      "hostname": "Hostname",
+      "isp": "ISP",
+      "asn": "ASN",
+      "location": "Location",
+      "loss": "Loss",
+      "best": "Best RTT",
+      "avg": "Avg RTT",
+      "worst": "Worst RTT"
+    },
+    "map": {
+      "title": "Map",
+      "empty": "The map needs a mapping library, which this phase does not add. The approximate location of each hop is in Hop Details."
+    },
+    "empty": {
+      "title": "No analysis data",
+      "description": "Return to the analyzer and submit a trace.",
+      "back": "Back to the analyzer"
+    }
+  }
+}
