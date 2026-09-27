@@ -1,6 +1,22 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+/**
+ * How many workers the build is allowed, when the environment says so.
+ *
+ * Next defaults to one worker per CPU, which is right on a laptop and wrong in
+ * a container: a virtual machine reports the *host's* core count to
+ * `os.cpus()`, so a two-core VM on a ten-core laptop starts ten workers and is
+ * killed for memory long before it finishes. This project's own Docker build
+ * hit exactly that. `NEXT_BUILD_CPUS` lets the Dockerfile state how much room
+ * there really is.
+ *
+ * Left unset — which is every build outside a container — the `experimental`
+ * key is not added to the config at all, so Next's own default still applies
+ * and a local `npm run build` behaves exactly as it did before.
+ */
+const buildCpus = Number(process.env.NEXT_BUILD_CPUS) || undefined;
+
 const nextConfig: NextConfig = {
   /* Emits `.next/standalone`: the server plus only the `node_modules` files the
      trace actually reaches, instead of the whole dependency tree. The container
@@ -13,6 +29,8 @@ const nextConfig: NextConfig = {
      serves from it — it prints a warning saying to run the standalone server
      instead, which is what the container does. */
   output: "standalone",
+
+  ...(buildCpus === undefined ? {} : { experimental: { cpus: buildCpus } }),
 };
 
 /* Points next-intl at i18n/request.ts, which resolves the locale and loads the

@@ -1,0 +1,96 @@
+# Builds the container image and publishes it to GHCR.
+#
+# Every push to `main` produces a multi-architecture image — `linux/amd64` and
+# `linux/arm64` — tagged `latest` and with its commit SHA. The SHA tag is the
+# one to deploy from when you need to know exactly what is running; `latest`
+# is the moving alias.
+#
+# ## Why this runs here rather than on a workstation
+#
+# Cross-building `linux/amd64` on an Apple Silicon machine means running the
+# compiler under QEMU emulation, and a small Docker VM is killed for memory
+# part-way through. A GitHub runner has enough for both architectures, and it
+# has the second thing a local build does not: a `GITHUB_TOKEN` that is already
+# allowed to write packages, so no personal access token is involved and none
+# has to be rotated.
+#
+# ## Permissions
+#
+# `packages: write` is what lets the token push to GHCR, and `contents: read` is
+# all the checkout needs. Both are declared here rather than inherited from the
+# repository default, so the job's authority is legible in this file.
+
+name: Build and publish image
+
+on:
+  push:
+    branches: [main]
+  # So a failed run can be retried without an empty commit.
+  workflow_dispatch:
+
+# One image per branch at a time. A newer push cancels an in-flight build of the
+# same branch, because the older one's result would be superseded the moment it
+# finished — but a release on `main` is never cancelled by a push to another
+# branch, and no run is cancelled once it is already uploading.
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # QEMU is what makes the non-native architecture buildable at all; without
+      # it the `linux/amd64` leg fails on an arm64 runner before it starts.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Container image names must be lowercase, and this repository is not:
+      # `github.repository` is `vps4128/RouteLens`, which the registry rejects.
+      # The `${VAR,,}` expansion lowercases it rather than hardcoding the name,
+      # so a rename or a fork keeps working. Passed on as a step output rather
+      # than through `$GITHUB_ENV`, so the value the later steps interpolate is
+      # one this file names explicitly.
+      - name: Resolve the image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Derive the tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Layer cache in the Actions cache, so a push that changes one file
+          # does not reinstall the dependency tree.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

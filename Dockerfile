@@ -56,6 +56,16 @@ RUN npm ci
 # here and are what makes that possible.
 FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# How many workers `next build` may use. Left empty, Next's own default applies
+# — one per CPU, which is what a CI runner wants. Set it to 1 when building on
+# something small: `os.cpus()` inside a container reports the *host's* core
+# count rather than the machine's, so a modest virtual machine starts far more
+# workers than it has memory for and the build is killed part-way. See
+# `NEXT_BUILD_CPUS` in `next.config.ts`.
+ARG BUILD_CPUS=
+ENV NEXT_BUILD_CPUS=$BUILD_CPUS
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
