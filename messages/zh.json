@@ -1,13 +1,40 @@
 {
   "metadata": {
     "title": "RouteLens — MTR / Traceroute 网络路径分析器",
-    "description": "逐跳分析你的网络路径。粘贴 MTR、WinMTR、NextTrace 或 traceroute 输出，了解每一跳的 ASN、ISP 和网络线路。"
+    "description": "逐跳分析你的网络路径。粘贴 MTR、WinMTR、NextTrace 或 traceroute 输出，了解每一跳的 ASN 和网络线路。"
   },
   "home": {
     "eyebrow": "网络路径分析器",
     "title": "逐跳分析你的网络路径。",
-    "description": "粘贴 MTR、WinMTR、NextTrace 或 traceroute 输出，了解每一跳的 ASN、ISP 和网络线路。",
-    "analyze": "开始分析"
+    "description": "粘贴 MTR、WinMTR、NextTrace 或 traceroute 输出，了解每一跳的 ASN 和网络线路。",
+    "analyze": "开始使用"
+  },
+  "nav": {
+    "label": "主导航",
+    "mtrAnalysis": "MTR 分析",
+    "ipLookup": "IP 归属地查询"
+  },
+  "ip": {
+    "title": "IP 归属地查询",
+    "description": "输入 IPv4 或 IPv6 地址，查询它的 ASN 运营商与 GeoIP 归属地。",
+    "label": "IP 地址",
+    "placeholder": "8.8.8.8 或 2001:4860:4860::8888",
+    "submit": "查询",
+    "resultTitle": "查询结果",
+    "ipLabel": "IP：",
+    "orgLabel": "Org：",
+    "addressLabel": "地址：",
+    "approximate": "归属地为 GeoIP 数据库的近似结果，不是设备的实际位置。",
+    "notices": {
+      "invalid": "请输入有效的 IPv4 或 IPv6 地址",
+      "invalidDescription": "例如 8.8.8.8 或 2001:4860:4860::8888。",
+      "notPublic": "该地址不是公网可路由地址",
+      "notPublicDescription": "私有、回环、链路本地等地址不会被任何 GeoIP 数据库收录。它们的归属地不是查不到，而是不存在。",
+      "noRecord": "数据库中暂无该地址的记录",
+      "noRecordDescription": "地址本身有效，但 MaxMind 的 ASN 与 City 数据库中都没有它的记录。",
+      "unavailable": "GeoIP 数据库不可用",
+      "unavailableDescription": "服务端没有可读取的 MaxMind 数据库，这次查询没有执行。"
+    }
   },
   "analyzer": {
     "inputLabel": "MTR 输出",
@@ -40,24 +67,21 @@
     },
     "asPath": {
       "title": "AS Path",
-      "empty": "AS 路径来自 BGP 路由数据，本阶段未接入。各跃点所属的 AS 见跃点详情。"
+      "description": "基于探测跳点 ASN 的实际观测路径。",
+      "hopRange": "跳点 {range}",
+      "empty": "当前路径暂无 ASN 数据"
     },
     "hopDetails": {
       "title": "跃点详情",
       "index": "跃点",
       "ip": "IP 地址",
       "hostname": "主机名",
-      "isp": "ISP",
       "asn": "ASN",
       "location": "归属地",
       "loss": "丢包",
       "best": "最佳 RTT",
       "avg": "平均 RTT",
       "worst": "最差 RTT"
-    },
-    "map": {
-      "title": "地图",
-      "empty": "地图需要地图库，本阶段未引入。各跃点的大致位置见跃点详情。"
     },
     "empty": {
       "title": "暂无分析数据",

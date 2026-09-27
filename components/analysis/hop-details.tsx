@@ -42,16 +42,25 @@ import type { Hop, ParsedTrace } from "@/lib/analysis/types";
  * and carrier-internal addresses a trace begins with, which have no entry in
  * any database and no location to report.
  *
- * ISP stays an em dash throughout, and that is the complete answer rather than
- * a gap. MaxMind's free databases carry no ISP field — the trait belongs to a
- * paid product — so there is nothing to read, and the one substitution that
- * would fill the column, copying the ASN's organization across, would be
- * stating a different fact in the ISP's name. See `Hop.isp`.
+ * There is no ISP column. MaxMind's free databases carry no ISP field — the
+ * trait belongs to a paid product — so the column would have drawn an em dash
+ * in every row it ever had. A column whose only possible value is "no answer"
+ * is not a narrower answer than leaving it out; it is the same answer repeated
+ * once per hop. Nor is it filled by the substitution that suggests itself,
+ * copying the ASN's organization across: an AS is an allocation and an ISP is a
+ * service sold over it, so that would state a different fact in the ISP's name.
  *
  * The enrichment is already folded in by the time a hop reaches this file: the
- * component reads `Hop.isp`, `Hop.asn` and `Hop.location` and knows nothing
- * about where they came from, which is what lets a database change without this
- * file changing.
+ * component reads `Hop.asn` and `Hop.location` and knows nothing about where
+ * they came from, which is what lets a database change without this file
+ * changing.
+ *
+ * ASN is the one column whose values wrap. Organization names run to forty
+ * characters, and on a single line that column alone was wider than the rest of
+ * the table put together — which is what pushed the table into horizontal
+ * scroll on a desktop. Its values are capped and fold instead, at the width
+ * `--hop-asn-column-max-width` sets. Every other column keeps to one line: a
+ * wrapped IP address or a split RTT is worse to read than a scroll.
  *
  * Every cell goes through a `format*` helper, so an unanswered hop prints an em
  * dash. `undefined` cannot reach the DOM, and neither can `NaN`.
@@ -62,6 +71,15 @@ type Column = {
   key: string;
   label: string;
   value: (hop: Hop) => string;
+  /**
+   * The width this column's values wrap at, for a column long enough to set the
+   * table's width on its own.
+   *
+   * Unset — which is every column but ASN — keeps the value on one line, so a
+   * row is one line tall and the scroll viewport's arithmetic in `globals.css`
+   * holds for it.
+   */
+  wrapAt?: string;
 };
 
 export function HopDetails({ trace }: { trace: ParsedTrace }) {
@@ -75,8 +93,12 @@ export function HopDetails({ trace }: { trace: ParsedTrace }) {
       label: t("hostname"),
       value: (hop) => hop.hostname ?? EMPTY_VALUE,
     },
-    { key: "isp", label: t("isp"), value: (hop) => hop.isp ?? EMPTY_VALUE },
-    { key: "asn", label: t("asn"), value: (hop) => formatAsn(hop.asn) },
+    {
+      key: "asn",
+      label: t("asn"),
+      value: (hop) => formatAsn(hop.asn),
+      wrapAt: "max-w-[var(--hop-asn-column-max-width)]",
+    },
     {
       key: "location",
       label: t("location"),
@@ -128,9 +150,25 @@ export function HopDetails({ trace }: { trace: ParsedTrace }) {
                     {columns.map((column) => (
                       <td
                         key={column.key}
-                        className="py-xs pr-lg whitespace-nowrap"
+                        className={`py-xs pr-lg align-top ${
+                          column.wrapAt === undefined
+                            ? "whitespace-nowrap"
+                            : "whitespace-normal"
+                        }`}
                       >
-                        {column.value(hop)}
+                        {/* The ceiling sits on a box inside the cell, not on
+                            the cell: `max-width` does not apply to a table
+                            cell, so a column told to wrap there would go on
+                            growing regardless. */}
+                        <span
+                          className={
+                            column.wrapAt === undefined
+                              ? undefined
+                              : `block ${column.wrapAt}`
+                          }
+                        >
+                          {column.value(hop)}
+                        </span>
                       </td>
                     ))}
                   </tr>

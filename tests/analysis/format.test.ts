@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   EMPTY_VALUE,
   formatAsn,
+  formatAsnNumber,
   formatCount,
   formatLocation,
   formatLoss,
@@ -28,7 +29,6 @@ const FULL_HOP: Hop = {
   index: 1,
   ip: "93.184.216.34",
   hostname: "example.com",
-  isp: "China Telecom",
   asn: { number: 4134, organization: "China Telecom" },
   location: { country: "中国", region: "广东", city: "广州" },
   loss: 0,
@@ -107,6 +107,25 @@ describe("measurement formatting", () => {
     expect(formatAsn({})).toBe(EMPTY_VALUE);
   });
 
+  it("formats the ASN number on its own", () => {
+    // The IP lookup page gives the number and the operator a row each, so the
+    // prefix has to be spellable without the name beside it — and it has to be
+    // the same spelling the hop table shows, which is what the comparison below
+    // is for.
+    expect(formatAsnNumber({ number: 4134, organization: "China Telecom" })).toBe(
+      "AS4134",
+    );
+    expect(formatAsnNumber({ number: 13335 })).toBe("AS13335");
+    expect(formatAsnNumber({ number: 0 })).toBe("AS0");
+    expect(formatAsnNumber({ organization: "Cloudflare, Inc." })).toBe(
+      EMPTY_VALUE,
+    );
+    expect(formatAsnNumber(undefined)).toBe(EMPTY_VALUE);
+
+    const both = { number: 4134, organization: "China Telecom" };
+    expect(formatAsn(both).split(" / ")[0]).toBe(formatAsnNumber(both));
+  });
+
   it("formats the hop count", () => {
     expect(formatCount(9)).toBe("9");
     expect(formatCount(0)).toBe("0");
@@ -123,11 +142,10 @@ describe("measurement formatting", () => {
   });
 
   it("survives every combination of present and absent fields", () => {
-    // Every subset of the eleven optional fields, which is 2048 hop shapes.
+    // Every subset of the ten optional fields, which is 1024 hop shapes.
     const fields = [
       "ip",
       "hostname",
-      "isp",
       "asn",
       "location",
       "loss",
@@ -149,7 +167,6 @@ describe("measurement formatting", () => {
       for (const value of [
         hop.ip ?? EMPTY_VALUE,
         hop.hostname ?? EMPTY_VALUE,
-        hop.isp ?? EMPTY_VALUE,
         formatAsn(hop.asn),
         formatLocation(hop.location),
         formatLoss(hop.loss),

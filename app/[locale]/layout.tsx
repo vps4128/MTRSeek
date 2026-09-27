@@ -75,13 +75,14 @@ export default async function LocaleLayout({
       lang={locale}
       /* Next.js 16 stopped overriding `scroll-behavior` during navigation by
          default, so opting back in is what keeps the two behaviours apart: the
-         hero's in-page jump to the trace input still animates, while the
+         in-page jumps — the empty panel back to the paste band, and the band
+         down to the results it has just produced — still animate, while the
          hand-off from the homepage to /analysis jumps straight to the top of
          the new page instead of smooth-scrolling down it.
          See node_modules/next/dist/docs → version-16.md. */
       data-scroll-behavior="smooth"
-      /* `motion-safe:` so the hero's in-page jump to the trace input animates
-         only for readers who have not asked for reduced motion. */
+      /* `motion-safe:` so those in-page jumps animate only for readers who have
+         not asked for reduced motion. */
       className={`${cormorant.variable} ${inter.variable} ${jetbrainsMono.variable} motion-safe:scroll-smooth`}
     >
       <body>

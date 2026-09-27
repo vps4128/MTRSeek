@@ -1,12 +1,12 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useSyncExternalStore } from "react";
 
 import { AnalysisHeader } from "@/components/analysis/analysis-header";
 import { AsPath } from "@/components/analysis/as-path";
 import { EmptyPanel } from "@/components/analysis/empty-panel";
 import { HopDetails } from "@/components/analysis/hop-details";
-import { MapPlaceholder } from "@/components/analysis/map-placeholder";
 import { RouteSummary } from "@/components/analysis/route-summary";
 import { useEnrichment } from "@/components/analysis/use-enrichment";
 import {
@@ -17,6 +17,7 @@ import {
 import { summarize } from "@/lib/analysis/summary";
 import type { ParsedTrace } from "@/lib/analysis/types";
 import { applyEnrichment } from "@/lib/enrichment/merge";
+import { resolveLocale } from "@/i18n/routing";
 
 /**
  * The analysis page's client shell.
@@ -29,12 +30,12 @@ import { applyEnrichment } from "@/lib/enrichment/merge";
  *
  * ## One page, read top to bottom
  *
- * The five sections are stacked in the order a route is read: what was
- * analysed, its summary figures, the AS path, the hops themselves, and the map.
- * There is no tab bar and no view state, because none of these is an
- * alternative to any other — a reader who wants the hop table also wants the
- * summary above it, and hiding four fifths of the page behind a click makes the
- * page harder to read rather than shorter.
+ * The four sections are stacked in the order a route is read: what was
+ * analysed, its summary figures, the AS path, and the hops themselves. There is
+ * no tab bar and no view state, because none of these is an alternative to any
+ * other — a reader who wants the hop table also wants the summary above it, and
+ * hiding three quarters of the page behind a click makes the page harder to
+ * read rather than shorter.
  *
  * ## Three states, and the third is the important one
  *
@@ -62,6 +63,20 @@ import { applyEnrichment } from "@/lib/enrichment/merge";
  * the moment the trace is read, with em dashes where attribution would go. A
  * data source that is slow, missing or broken costs the page three columns; it
  * cannot cost it the trace.
+ *
+ * The map that used to close this page read the same enriched hops for its
+ * labels and the lookup result for its coordinates. With the map gone the
+ * coordinates have no reader here at all, which is why the hook no longer
+ * reports whether it is still waiting: the em dash is the same either way, and
+ * nothing else was ever waiting on it.
+ *
+ * ## The locale is read here, once
+ *
+ * A place name arrives with one entry per language the database was compiled
+ * with, and the hop needs the reader's. That choice is made here — at the only
+ * point where the i18n layer and the lookup meet — and handed to the merge, so
+ * the table and the map read the same resolved string off the same hop rather
+ * than each resolving it from the lookup map and being free to differ.
  */
 export function AnalysisView() {
   const trace = useSyncExternalStore<ParsedTrace | null | undefined>(
@@ -70,9 +85,10 @@ export function AnalysisView() {
     getTraceServerSnapshot,
   );
 
-  // Called before the early returns below, because a hook cannot be skipped —
-  // `trace?.hops` is what lets it be called unconditionally while still doing
-  // nothing until there is a trace to enrich.
+  // Both hooks are called before the early returns below, because a hook cannot
+  // be skipped — `trace?.hops` is what lets the lookup hook be called
+  // unconditionally while still doing nothing until there is a trace to enrich.
+  const locale = resolveLocale(useLocale());
   const enrichment = useEnrichment(trace?.hops);
 
   if (trace === undefined) return null;
@@ -81,12 +97,17 @@ export function AnalysisView() {
   const summary = summarize(trace);
 
   // The same trace, with each hop's attribution attached where the lookup
-  // answered for its address. A hop whose address was filtered out, or that the
-  // database had nothing on, comes through as the parser wrote it.
+  // answered for its address, in the language the page is being read in. A hop
+  // whose address was filtered out, or that the database had nothing on, comes
+  // through as the parser wrote it.
   const enriched: ParsedTrace = {
     ...trace,
     hops: trace.hops.map((hop) =>
-      applyEnrichment(hop, hop.ip === undefined ? undefined : enrichment.get(hop.ip)),
+      applyEnrichment(
+        hop,
+        hop.ip === undefined ? undefined : enrichment.get(hop.ip),
+        locale,
+      ),
     ),
   };
 
@@ -96,9 +117,8 @@ export function AnalysisView() {
 
       <div className="mt-xxl flex flex-col gap-xxl">
         <RouteSummary trace={enriched} summary={summary} />
-        <AsPath />
+        <AsPath hops={enriched.hops} />
         <HopDetails trace={enriched} />
-        <MapPlaceholder />
       </div>
     </>
   );

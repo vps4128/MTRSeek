@@ -1,4 +1,6 @@
-import type { HopAsn, HopLocation } from "@/lib/analysis/types";
+import type { HopAsn } from "@/lib/analysis/types";
+
+import type { GeoName } from "./names";
 
 /**
  * What a lookup can say about one address.
@@ -12,8 +14,8 @@ import type { HopAsn, HopLocation } from "@/lib/analysis/types";
  * fillers available are lies: `Unknown`, `N/A`, or a neighbouring country
  * copied across. So a field that the database did not answer is absent, and the
  * display prints an em dash for it. §8 states the same rule from the outside,
- * and forbids the three specific strings — `Unknown ISP`, `Unknown ASN`,
- * `Unknown City` — that would otherwise creep in here.
+ * and forbids the specific strings — `Unknown ASN`, `Unknown City` — that
+ * would otherwise creep in here.
  *
  * `{ ip: "1.2.3.4" }` is therefore a complete and honest answer, and the one
  * every private address and unallocated range produces.
@@ -30,14 +32,23 @@ import type { HopAsn, HopLocation } from "@/lib/analysis/types";
  * GeoIP's own answer about where an address is, with the precision the database
  * attached to it.
  *
- * Extends `HopLocation` with the three fields the hop table does not show.
- * Keeping the display fields in the same shape as the hop's means the merge is
- * a pick rather than a translation, and there is no second spelling of
- * "country" to drift out of step with the first.
+ * The three place fields are `GeoName`s rather than the display strings
+ * `HopLocation` holds, because the database answers in every language it was
+ * compiled with and a hop needs one. Carrying both as far as the merge — instead
+ * of choosing one here — is what lets the choice be made per reader rather than
+ * once for everybody; `lib/enrichment/names.ts` is where it is made.
+ *
+ * The country code, the coordinates and the accuracy radius are the fields the
+ * hop table has no column for, and none of the four reaches a hop: a hop carries
+ * a location and an ASN, and a coordinate is neither.
  */
-export type IpGeo = HopLocation & {
+export type IpGeo = {
   /** ISO 3166-1 alpha-2, as the database stores it. Not shown in the table. */
   countryCode?: string;
+
+  country?: GeoName;
+  region?: GeoName;
+  city?: GeoName;
 
   /**
    * Where the lookup places the address, to the accuracy it claims.
@@ -45,9 +56,9 @@ export type IpGeo = HopLocation & {
    * An approximate point, and nothing else. It is the centre of an area the
    * database associates with the address — routinely the provider's regional
    * office or a city centroid — and never the position of the router that
-   * answered. Anything that draws these has to say "approximate", and the
-   * accuracy radius is what makes that statement quantitative, which is why it
-   * is carried rather than discarded.
+   * answered. A page that prints these has to say "approximate" beside them,
+   * and the accuracy radius is what makes that statement quantitative, which is
+   * why it is carried rather than discarded.
    */
   latitude?: number;
   longitude?: number;
@@ -59,15 +70,6 @@ export type IpGeo = HopLocation & {
 /** One address, as a provider answers for it. */
 export type IpEnrichment = {
   ip: string;
-
-  /**
-   * Only ever set from a database field that means "ISP".
-   *
-   * Nothing in the MaxMind free data means that, so this stays absent and the
-   * hop table stays an em dash. It is never derived from `asn.organization` —
-   * see `Hop.isp` for why those are two different facts.
-   */
-  isp?: string;
 
   asn?: HopAsn;
 

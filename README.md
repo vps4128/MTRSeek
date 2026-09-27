@@ -2,8 +2,8 @@
 
 MTR / Traceroute Network Route Analyzer
 
-Paste MTR, WinMTR, NextTrace or traceroute output to understand every hop, ASN,
-ISP and network route.
+Paste MTR, WinMTR, NextTrace or traceroute output to understand every hop, ASN
+and network route.
 
 ## Development
 
@@ -14,29 +14,41 @@ npm run dev
 
 Open http://localhost:3000. The root redirects to the default locale.
 
-## Languages
+## Language
 
-RouteLens ships in two languages, and both are real routes rather than a
-client-side toggle:
+RouteLens is Chinese. The language is still a route segment rather than a
+client-side setting, so a page has one URL and survives a reload without
+anything being stored on the client:
 
-| Language          | URL       |
-| ----------------- | --------- |
-| Chinese (default) | `/zh`     |
-| English           | `/en`     |
+| Language | URL   |
+| -------- | ----- |
+| Chinese  | `/zh` |
 
-`/` redirects to `/zh`. The language lives in the URL, so a link opens in the
-language it was copied from and a reload keeps it. The switcher in the header
-swaps only the locale prefix, so `/zh/analysis` becomes `/en/analysis`.
+`/` redirects to `/zh`. There is no language switcher, because a control
+offering one choice is not a control.
 
-Translation strings live in `messages/zh.json` and `messages/en.json` and are
-reached through `t("…")` keys; no component branches on a language variable and
-nothing is stored in `localStorage`.
+Translation strings live in `messages/zh.json` and are reached through `t("…")`
+keys; no component branches on a language variable and nothing is stored in
+`localStorage`.
 
 Two kinds of text are deliberately **not** translated:
 
 - **Network facts.** Addresses, ASNs, latencies, loss figures and raw trace
-  output are what a terminal prints, and are identical in both catalogs.
-- **The brand.** The product is `RouteLens` in every language.
+  output are what a terminal prints.
+- **The brand.** The product is `RouteLens`.
+
+A third kind of text is neither translated nor fixed: a place name out of a
+GeoIP database. The database carries its own name for a place in every language
+it was compiled with, and the page asks for the Chinese one — `zh-CN` is
+MaxMind's key, and there is no plain `zh` among the eight locales they compile.
+Nothing is translated on the way: a place the database carries no Chinese name
+for falls back to its English one, which is the single key the format
+guarantees, and a place it does not name at all shows an em dash rather than a
+name this app assembled. That fallback is why `en` survives in the enrichment
+layer after the English pages went — it is not a language this app is offered
+in, it is the one entry every MMDB build is guaranteed to have. An ASN's
+organization is never translated at all, because the database holds one spelling
+of it and no second one to choose between.
 
 ## Scripts
 
@@ -50,9 +62,10 @@ Two kinds of text are deliberately **not** translated:
 
 ## Status
 
-Phase 3 — parsing, the analysis page, and MaxMind GeoLite2 enrichment.
+Phase 4 — parsing, the analysis page, MaxMind GeoLite2 enrichment, and the IP
+lookup.
 
-The homepage is a hero and a trace input, in both languages. The hero's button
+The homepage is a hero and a trace input. The hero's button
 scrolls to the input and nothing else; the input's own button is the real entry
 point. It runs the paste through `parseTrace` and, if the text is a trace it
 recognises, stores it and hands off to `/analysis`. If it is not, the reader
@@ -67,9 +80,8 @@ One page, read top to bottom — no tabs and no view state:
 ```
 Route Analysis      target, source, hop count, packet loss
 Route Summary       target · hop count · packet loss · avg · best · worst RTT
-AS Path             a compact line, empty this phase
+AS Path             the observed ASN sequence, one segment per AS
 Hop Details         the hop table
-Map                 a placeholder, empty this phase
 ```
 
 None of these sections is an alternative to any other, so none of them is
@@ -80,22 +92,32 @@ The hop table reads left to right as three questions about each hop — who it i
 where it is, what it measured:
 
 ```
-Hop  IP Address  Hostname  ISP  ASN  Location  Loss  Best RTT  Avg RTT  Worst RTT
+Hop  IP Address  Hostname  ASN  Location  Loss  Best RTT  Avg RTT  Worst RTT
 ```
 
-The first six answer the first two questions, and the middle three of those are
-looked up rather than parsed. `ASN` reads `AS15169 / Google Inc.` and `Location`
-reads `China · Jilin Sheng · Changchun`, narrowing to whatever the database
-actually resolved — a record that stops at the country shows the country alone.
-A hop with no answer in any database, or an address the internet does not route
-such as `192.168.1.1`, shows an em dash in all three.
+The first five answer the first two questions, and two of those five are looked
+up rather than parsed. `ASN` reads `AS15169 / Google Inc.` and `Location` reads
+`中国 · 吉林 · 长春`, narrowing to whatever the database actually resolved — a
+record that stops at the country shows the country alone, and one MaxMind
+carries no Chinese name for shows the English one it does carry. The
+organization is never translated, because the database has one spelling of it. A
+hop with no answer in any database, or an address the internet does not route
+such as `192.168.1.1`, shows an em dash.
 
-`ISP` is an **em dash in every row**, and that is the complete answer rather
-than a gap. MaxMind's free databases carry no ISP field — the trait belongs to
-the paid GeoIP2 ISP product — so there is nothing to read, and the one
-substitution that would fill the column, copying the ASN's organization across,
-would state a different fact under the ISP's name. An AS is an allocation; an
-ISP is a service sold over it. Nothing is ever inferred from the address: a
+`ASN` is the one column whose values wrap. Organization names run to forty
+characters — `CHINA UNICOM China169 Backbone`, `Alibaba (US) Technology Co.,
+Ltd.` — and on a single line that column alone was wider than the rest of the
+table put together, which is what pushed the whole table into horizontal scroll
+on a desktop. Its values fold at the width `--hop-asn-column-max-width` sets.
+Every other column keeps to one line, because a wrapped IP address or a split
+RTT is worse to read than a scroll.
+
+There is no `ISP` column. MaxMind's free databases carry no ISP field — the
+trait belongs to the paid GeoIP2 ISP product — so the column would have drawn an
+em dash in every row it ever had, which is the same answer as leaving it out
+repeated once per hop. Nor is it filled by the substitution that suggests
+itself, copying the ASN's organization across: an AS is an allocation and an ISP
+is a service sold over it, and nothing is ever inferred from the address, so a
 range that looks like China Telecom is a guess wearing a fact's clothes.
 
 `Location` says where an address is *registered*, which is why it is not called
@@ -104,7 +126,76 @@ anything more precise.
 Past ten hops the table scrolls rather than growing, with its header stuck to
 the top of the scroll box so a row is always read against its column names.
 Ten hops or fewer produce no scrollbar at all: the cap is a maximum, not a
-height. Nowhere is a hop dropped, hidden or paged away.
+height. A trace whose organization names are long enough to wrap shows fewer
+than ten rows before the scrollbar appears, and the scrollbar it shows is the
+same one an eleventh hop would have produced. Nowhere is a hop dropped, hidden
+or paged away.
+
+### AS Path
+
+The line under the summary is the sequence of autonomous systems the trace was
+observed to cross, folded out of the same enriched hops the table below renders,
+so a row and a segment cannot disagree about what a hop belongs to.
+
+Consecutive hops in one AS become a single segment carrying the number, the
+operator's name and the hop range it covers. A return to an AS the trace had
+already left starts a new segment rather than being folded into the first —
+that return is the most interesting thing the sequence has to say, and merging
+it away would report a path that never happened. A hop that resolved to nothing
+ends the run and starts nothing, and the separator between the segments either
+side of it is a dash rather than an arrow: the gap is drawn rather than closed
+by assuming the silent hop belonged to either neighbour.
+
+The current AS Path represents the observed ASN sequence derived from trace
+hops. **It is not a BGP AS Path.** Nothing here queries a routing-information
+service, and a path assembled from the hops that answered is a weaker object
+than the one BGP announces — a router that stays silent contributes nothing,
+and the sequence says where the trace was seen, not what the routing table
+carries.
+
+### IP lookup
+
+`/[locale]/ip` is the app's second page, linked from the header, and it asks one
+question: what does the local MaxMind data say about this address? It takes IPv4
+and IPv6 and answers with three lines — the address, the operator that holds it,
+and the place the database put it in, joined and narrowed by the same
+`formatLocation` the hop table prints a location with:
+
+```
+8.8.8.8
+Google LLC
+地址：美国 · 加利福尼亚州 · 山景城
+```
+
+The answer sits in the column beside the form rather than under it, so using the
+field does not push it down the page. Below `md` there is one column and it
+follows the form.
+
+Nothing new was added underneath it. The page calls the same enrichment the
+analysis page does — the same two MMDB files, the same provider, the same
+`localizeCountry`/`localizeName` pair choosing the place names — and no
+third-party IP service is reached directly or indirectly. A `?q=` address is
+looked up on the server before the page is sent, which is what makes a result a
+URL: `/zh/ip?q=8.8.8.8` can be bookmarked and shared, and the browser's back
+button steps through previous lookups.
+
+The lookup can come back empty in four ways, and they get four different
+answers because they have four different fixes:
+
+| What was typed | What the page says |
+| --- | --- |
+| `8.8.8.8.8` | not an address, with an example of one |
+| `192.168.1.1` | a valid address no GeoIP database covers — private, loopback and link-local ranges are in none of them |
+| `8.8.8.8`, unallocated | valid, but in neither database |
+| anything, no databases installed | the lookup never ran, and which variable is unset |
+
+The last one is why the lookup runs on the server rather than in a `fetch` to
+`/api/enrich`: a client would receive a `503` and an empty `200` as the same
+thing and could only render one message for both.
+
+The result says under the address that it is an approximate GeoIP location
+rather than a device's position. There is no map, and no basemap service is
+contacted.
 
 ### Parsers
 
@@ -134,7 +225,9 @@ the lookup is a file read.
 | `lib/enrichment/ip.ts`     | Decides which addresses are worth asking about                     |
 | `lib/enrichment/service.ts`| Deduplicates, filters, calls the provider, preserves order         |
 | `lib/enrichment/maxmind/`  | Reads the two MMDB files; caches the readers across hot reloads    |
+| `lib/enrichment/names.ts`  | Picks which of the database's names a given page shows             |
 | `lib/enrichment/merge.ts`  | Folds an answer into a hop, touching nothing that was measured     |
+| `lib/enrichment/lookup.ts` | One address, and the reason when there is nothing to show          |
 | `app/api/enrich/route.ts`  | `POST { "ips": [...] }` → `{ "data": [...] }`                       |
 
 Set `MAXMIND_ASN_DB_PATH` and `MAXMIND_CITY_DB_PATH` to the two `.mmdb` files —
@@ -156,19 +249,35 @@ Three properties are deliberate and worth knowing before changing any of it:
   `sessionStorage`, so what is stored stays a record of what was measured and a
   database updated tomorrow changes tomorrow's page.
 
+The name a place is shown under is decided in the same place and once:
+`applyEnrichment` takes the locale and resolves each of the three names through
+`localizeName`, so the hop table and the IP lookup read the same string off the
+same answer rather than each choosing from the lookup map and being free to
+disagree. The provider deliberately does not choose — it hands on every language
+the database answered in, which is why the API response carries a name per
+language and no preference between them.
+
+The names that are not the database's are the countries in `localizeCountry`'s
+short table: Hong Kong, Macau and Taiwan read `中国香港`, `中国澳门` and
+`中国台湾`. A territory's own name and the way a reader says where it is are two
+different things, and this is the only place the app says the second. The table
+is keyed on the ISO code rather than on the name, because the name is the thing
+it exists to replace, and it is applied to the country and to nothing else — a
+region or a city that happens to share the name is a different field. Three
+entries, and an entry is not a policy: every other country is left exactly as
+the database spells it.
+
 ### What is never filled in
 
-`Hop.isp` is absent on every hop this repository produces, because the free
-databases have no such field. Nothing infers it from the address or from the
-ASN's organization, and the hop table shows an em dash.
+A hop carries an `asn` and a `location` and no third looked-up field. There is
+no provider name on it, so the substitution that would have filled one — the
+ASN's organization, which reads like an ISP name for the large carriers — is not
+something the code refuses; it is something the shape cannot express.
 
 Prefix and route classification are absent outright — there is no field for
-either. The AS Path section says what it is waiting for rather than showing a
-row of plausible AS numbers, and the Map placeholder does the same for the
-coordinates the lookup *does* return (§19 keeps this phase from adding a
-mapping SDK). `lib/route-detection/types.ts` defines the shape a classification
-would take, and there is deliberately no rule table and no function — a stub
-that returned "CN2" for `59.43.x.x` would be a guess wearing the clothes of a
+either. `lib/route-detection/types.ts` defines the shape a classification would
+take, and there is deliberately no rule table and no function — a stub that
+returned "CN2" for `59.43.x.x` would be a guess wearing the clothes of a
 measurement.
 
 ### Storage
@@ -192,8 +301,8 @@ anything DESIGN.md specifies for Latin text:
 - **CJK font fallbacks.** None of DESIGN.md's three faces carries a Chinese
   glyph. The stacks are completed with the serif and sans the platforms ship
   (Songti SC / PingFang SC, SimSun / Microsoft YaHei, Noto CJK), so Chinese
-  keeps the same display-serif / body-sans split as English instead of falling
-  into a browser default.
+  keeps the same display-serif / body-sans split Latin text gets instead of
+  falling into a browser default.
 - **Script-aware tracking and measures.** DESIGN.md's negative display tracking
   is a Latin device that makes full-width Han characters collide, and its `ch`
   measures are roughly half as wide in Chinese as intended. Both are adjusted

@@ -48,10 +48,14 @@ export function formatCount(value: number | undefined): string {
  * `中国 · 广东 · 广州`, narrowing to whatever the lookup actually returned, or
  * the empty marker.
  *
- * The parts are data and are passed through untranslated: a country name comes
- * out of a GeoIP database in whatever language that database was compiled in,
- * and rendering it in the reader's language would be inventing a fact rather
- * than translating one. Only the separator is ours.
+ * The parts are names out of a GeoIP database, in the reader's language where
+ * the database has one. Nothing is translated on the way here: a database
+ * compiled with several languages carries a name for each, and
+ * `lib/enrichment/names.ts` picks the entry to show — so a Chinese page reads
+ * `中国 · 吉林 · 长春` and an English one reads `China · Jilin Sheng ·
+ * Changchun`, and neither is a translation this app performed. A name the
+ * database does not carry in either language is left out entirely rather than
+ * replaced with one this app assembled. Only the separator is ours.
  *
  * Parts are dropped when absent, so a lookup that knows the country and
  * nothing else reads `美国` rather than `美国 · · `.
@@ -65,12 +69,23 @@ export function formatLocation(location: HopLocation | undefined): string {
 }
 
 /**
- * `AS4134 / China Telecom`, narrowing to whichever half the lookup returned, or
- * the empty marker.
+ * `AS4134`, or the empty marker.
  *
  * The `AS` prefix is added here rather than stored, so the number stays a number
  * — the database returns an integer, and a `Hop` carrying the string `"AS4134"`
  * would have thrown away the fact that it was one.
+ *
+ * A function of its own because the IP lookup page gives the number and the
+ * operator a row each, and it is the same function `formatAsn` joins, so the
+ * two pages cannot spell the prefix differently.
+ */
+export function formatAsnNumber(asn: HopAsn | undefined): string {
+  return asn?.number === undefined ? EMPTY_VALUE : `AS${asn.number}`;
+}
+
+/**
+ * `AS4134 / China Telecom`, narrowing to whichever half the lookup returned, or
+ * the empty marker.
  *
  * Both halves are joined rather than one being chosen, because they answer
  * different questions: the number is the allocation and the name is who holds
@@ -82,9 +97,10 @@ export function formatLocation(location: HopLocation | undefined): string {
  * what the database says the operator is called.
  */
 export function formatAsn(asn: HopAsn | undefined): string {
+  const number = formatAsnNumber(asn);
   const parts: string[] = [];
 
-  if (asn?.number !== undefined) parts.push(`AS${asn.number}`);
+  if (number !== EMPTY_VALUE) parts.push(number);
   if (asn?.organization) parts.push(asn.organization);
 
   return parts.length === 0 ? EMPTY_VALUE : parts.join(" / ");

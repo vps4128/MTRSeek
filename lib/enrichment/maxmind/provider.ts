@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 
 import type { HopAsn } from "@/lib/analysis/types";
 
+import { readNames } from "../names";
 import type { ProviderSetup } from "../provider";
 import type { EnrichmentProvider, IpEnrichment, IpGeo } from "../types";
 import { openDatabase } from "./database";
@@ -29,13 +30,14 @@ import type { AsnResponse, CityResponse } from "maxmind";
  *
  * ## What the free data does not have
  *
- * `isp` stays absent, always. MaxMind's ISP, Connection-Type and Domain traits
- * belong to the paid GeoIP2 products; `GeoLite2-City` has no such field to
- * read. The trait is read if a database is ever built that carries it, which
- * costs one optional access and means a licensed database would light the
- * column up without a code change. What is never done is the substitution that
- * would fill it today — copying `autonomous_system_organization` into it. An AS
- * is an allocation; an ISP is a service sold over it.
+ * MaxMind's ISP, Connection-Type and Domain traits belong to the paid GeoIP2
+ * products, and `GeoLite2-City` has none of them. Only ASN and geography are
+ * read. An address is never attributed to a provider on the strength of the
+ * operator that announces it: an AS is an allocation and an ISP is a service
+ * sold over it, so copying `autonomous_system_organization` into a provider
+ * field would state a different fact in the provider's name. There is no such
+ * field on a hop, which is the same decision made once rather than guarded at
+ * every use.
  */
 
 type MaxmindConfig = {
@@ -44,21 +46,14 @@ type MaxmindConfig = {
 };
 
 /**
- * The database's English name for a place.
+ * The AS as the database states it.
  *
- * `names` carries several languages and marks only `en` as guaranteed — a
- * database is compiled with whatever locales its builder chose, so `zh-CN` is
- * present in MaxMind's official builds and absent from any rebuild that did not
- * ask for it. Reading a fixed language also keeps a given address rendering
- * identically in both of this app's locales, which is what "this is data, not
- * copy" requires: a place name that changed with the interface language would
- * be a translated fact, and the translation would be the invention.
+ * The organization is a plain string, not a `names` map: the database holds one
+ * spelling of it and no translation of it, so there is nothing here for the
+ * language table to choose between and nothing that reads it. An operator's name
+ * is therefore never translated — not because a rule forbids it but because the
+ * data has only one form, and inventing a second would be this app's own.
  */
-function englishName(names: { en?: string } | undefined): string | undefined {
-  const name = names?.en?.trim();
-  return name ? name : undefined;
-}
-
 function asnFrom(record: AsnResponse): HopAsn | undefined {
   const number = record.autonomous_system_number;
   const organization = record.autonomous_system_organization?.trim();
@@ -75,10 +70,20 @@ function asnFrom(record: AsnResponse): HopAsn | undefined {
  * Geography, as far as the city database resolves it.
  *
  * Every part is optional because the database answers in whatever depth it has
- * for a given range (§11) — a block-level record has a city, a country-level
- * one stops at the country, and neither is an error. The subdivision is read
- * when it is there and skipped when it is not; a database that carries none is
- * normal, not broken.
+ * for a given range — a block-level record has a city, a country-level one stops
+ * at the country, and neither is an error. The subdivision is read when it is
+ * there and skipped when it is not; a database that carries none is normal, not
+ * broken.
+ *
+ * The three place names are read as `names` maps rather than as the one string
+ * each will become. `names` carries several languages and marks only `en` as
+ * guaranteed — a database is compiled with whatever locales its builder chose,
+ * so `zh-CN` is present in MaxMind's official builds and absent from any rebuild
+ * that did not ask for it. Which of them a reader sees is not decided here: this
+ * layer has no reader, so it reads the languages the app can display and leaves
+ * the choice to `lib/enrichment/names.ts`, where the locale is known. Fixing one
+ * language here instead would decide it for every reader at once, and decide it
+ * silently.
  */
 function geoFrom(record: CityResponse): IpGeo | undefined {
   // Where the address is, falling back to where it is registered. The two are
@@ -89,10 +94,10 @@ function geoFrom(record: CityResponse): IpGeo | undefined {
   // answer with a worse one.
   const country = record.country ?? record.registered_country;
 
-  const countryName = englishName(country?.names);
+  const countryName = readNames(country?.names);
   const countryCode = country?.iso_code;
-  const region = englishName(record.subdivisions?.[0]?.names);
-  const city = englishName(record.city?.names);
+  const region = readNames(record.subdivisions?.[0]?.names);
+  const city = readNames(record.city?.names);
 
   const location = record.location;
   const latitude = location?.latitude;
@@ -135,16 +140,10 @@ function createMaxmindProvider(config: MaxmindConfig): EnrichmentProvider {
     const geo = cityRecord === null ? undefined : geoFrom(cityRecord);
     if (geo !== undefined) enrichment.geo = geo;
 
-    // Read, never derived. `GeoLite2-City` does not carry this trait, so in
-    // practice the column stays an em dash — which is the correct answer, not a
-    // shortcoming to work around.
-    const isp = cityRecord?.traits?.isp?.trim();
-    if (isp) enrichment.isp = isp;
-
     // A record that answered nothing is `{ ip }` and nothing more. No filler
-    // string is written for any field: §8 forbids `Unknown ISP`, `Unknown ASN`
-    // and `Unknown City` by name, and the general rule is the same one — an
-    // absent field is a fact, a placeholder is a lie that renders.
+    // string is written for any field: §8 forbids `Unknown ASN` and
+    // `Unknown City` by name, and the general rule is the same one — an absent
+    // field is a fact, a placeholder is a lie that renders.
     return enrichment;
   }
 

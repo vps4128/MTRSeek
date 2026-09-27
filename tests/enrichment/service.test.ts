@@ -141,14 +141,22 @@ describe("the enrichment service", () => {
     const { provider } = recorder((ip) => ({
       ip,
       asn: { number: 13335, organization: "Cloudflare, Inc." },
-      geo: { country: "Australia", countryCode: "AU", city: "Sydney" },
+      geo: {
+        country: { en: "Australia", zh: "澳大利亚" },
+        countryCode: "AU",
+        city: { en: "Sydney" },
+      },
     }));
 
     const results = await enrichIps(provider, ["1.1.1.1"]);
     expect(results.get("1.1.1.1")).toEqual({
       ip: "1.1.1.1",
       asn: { number: 13335, organization: "Cloudflare, Inc." },
-      geo: { country: "Australia", countryCode: "AU", city: "Sydney" },
+      geo: {
+        country: { en: "Australia", zh: "澳大利亚" },
+        countryCode: "AU",
+        city: { en: "Sydney" },
+      },
     });
   });
 });

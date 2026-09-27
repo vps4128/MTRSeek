@@ -64,10 +64,10 @@ beforeEach(() => {
       ip: "1.1.1.1",
       asn: { number: 13335, organization: "Cloudflare, Inc." },
       geo: {
-        country: "Australia",
+        country: { en: "Australia", zh: "澳大利亚" },
         countryCode: "AU",
-        region: "New South Wales",
-        city: "Sydney",
+        region: { en: "New South Wales", zh: "新南威尔士州" },
+        city: { en: "Sydney", zh: "悉尼" },
         latitude: -33.494,
         longitude: 143.2104,
         accuracyRadius: 1000,
@@ -89,14 +89,29 @@ describe("POST /api/enrich", () => {
       ip: "1.1.1.1",
       asn: { number: 13335, organization: "Cloudflare, Inc." },
       geo: {
-        country: "Australia",
+        country: { en: "Australia", zh: "澳大利亚" },
         countryCode: "AU",
-        region: "New South Wales",
-        city: "Sydney",
+        region: { en: "New South Wales", zh: "新南威尔士州" },
+        city: { en: "Sydney", zh: "悉尼" },
         latitude: -33.494,
         longitude: 143.2104,
         accuracyRadius: 1000,
       },
+    });
+  });
+
+  it("carries every language the database answered in, and picks none", async () => {
+    // The route is a transport for what the provider said, and the provider said
+    // a name per language. Choosing one here would freeze the choice into the
+    // response, so the same lookup could not be read in the other language
+    // without asking again — and what the database has is a fact about the
+    // address, not about whoever is reading it.
+    const response = await post({ ips: ["1.1.1.1"] });
+    const { data } = (await response.json()) as { data: IpEnrichment[] };
+
+    expect(data[0]?.geo?.country).toEqual({
+      en: "Australia",
+      zh: "澳大利亚",
     });
   });
 

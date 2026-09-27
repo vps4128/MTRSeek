@@ -27,9 +27,22 @@ import { enrichIps } from "@/lib/enrichment/service";
  * publishes in its own test databases, chosen because each one exercises a
  * different shape of record: an AS with an organization and an AS without one,
  * a full city record, an IPv6 record that stops at the country, and a public
- * address with no record at all. Pointing these variables at a production
- * GeoLite2 download runs the same assertions against real coverage — the shapes
- * are the same, and only the addresses differ.
+ * address with no record at all.
+ *
+ * ## Point these at the test databases, not at production
+ *
+ * Every assertion below names the value its record holds, so the file only
+ * passes against the databases it was written for: MaxMind's
+ * `GeoLite2-ASN-Test.mmdb` and `GeoLite2-City-Test.mmdb`, published in the
+ * `maxmind/MaxMind-DB` repository. A production download is the same format
+ * holding different data — `1.0.0.1` is Cloudflare there and Google in the test
+ * file, and seven of the nine cases here fail against it.
+ *
+ * That is not something to paper over by loosening the assertions to "an ASN is
+ * present": naming the expected value is the whole of what makes them worth
+ * running. The application is indifferent to which pair it is given; only this
+ * file is not, which is why it skips rather than fails when it is pointed at
+ * data it cannot vouch for.
  */
 
 const asnPath = process.env.MAXMIND_ASN_DB_PATH;
@@ -73,10 +86,17 @@ describe.skipIf(!configured)("a real GeoLite2 lookup", () => {
     const results = await lookup(["175.16.199.1"]);
     const geo = results.get("175.16.199.1")?.geo;
 
-    expect(geo?.country).toBe("China");
+    // The English name is asserted exactly, as every value in this file is. The
+    // other languages are read through `geo.country.zh` and are the database's
+    // business rather than this file's: which locales a build carries is decided
+    // by whoever compiled it, and the test databases are not the production ones.
+    // That the Chinese name is read from `zh-CN` — the key MaxMind uses, there
+    // being no plain `zh` — is `tests/enrichment/names.test.ts`'s to check, and
+    // it checks it against a map carrying both keys.
+    expect(geo?.country?.en).toBe("China");
     expect(geo?.countryCode).toBe("CN");
-    expect(geo?.region).toBe("Jilin Sheng");
-    expect(geo?.city).toBe("Changchun");
+    expect(geo?.region?.en).toBe("Jilin Sheng");
+    expect(geo?.city?.en).toBe("Changchun");
     // §10: the coordinates, and the radius they are good to.
     expect(geo?.accuracyRadius).toBe(100);
     expect(typeof geo?.latitude).toBe("number");
@@ -103,7 +123,7 @@ describe.skipIf(!configured)("a real GeoLite2 lookup", () => {
     const geo = results.get("81.2.69.142")?.geo;
 
     expect(geo?.countryCode).toBe("GB");
-    expect(geo?.city).toBe("London");
+    expect(geo?.city?.en).toBe("London");
   });
 
   it("answers for IPv6, both natively and wrapped", async () => {
@@ -133,18 +153,6 @@ describe.skipIf(!configured)("a real GeoLite2 lookup", () => {
     ]);
 
     expect(results.size).toBe(0);
-  });
-
-  it("leaves ISP absent even where an ASN organization is present", async () => {
-    // §3, checked against real data rather than against a stub: the free
-    // databases have no ISP field, and the organization that is right there —
-    // `Google Inc.`, which reads exactly like an ISP name — must not be copied
-    // into its place.
-    const results = await lookup(["1.0.0.1"]);
-    const answer = results.get("1.0.0.1");
-
-    expect(answer?.asn?.organization).toBe("Google Inc.");
-    expect(answer?.isp).toBeUndefined();
   });
 
   it("asks the database once for a repeated address", async () => {

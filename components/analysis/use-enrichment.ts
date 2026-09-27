@@ -42,6 +42,15 @@ import type { IpEnrichment } from "@/lib/enrichment/types";
  * older answer land second and win. The `active` flag drops it. There is no
  * `AbortController`: the request is a few hundred bytes to the app's own API
  * route, and the flag is enough to keep a stale answer off the screen.
+ *
+ * ## Why nothing reports that it is still waiting
+ *
+ * "The lookup has not answered yet" and "the lookup answered, and there is
+ * nothing to say" are the same empty map, and for the only reader left — a cell
+ * of the hop table — that does not matter: an em dash is what both of them
+ * mean. The map used to need the difference, because its empty state is a
+ * sentence rather than a dash; it no longer exists, so the hook no longer
+ * reports a distinction nothing acts on.
  */
 export function useEnrichment(
   hops: readonly Hop[] | undefined,
@@ -73,12 +82,18 @@ export function useEnrichment(
     };
   }, [key]);
 
-  return answer.key === key ? answer.value : EMPTY;
+  // An empty key is a trace with no public addresses to ask about: the request
+  // never fires, so there is nothing to wait for and the empty map is the
+  // answer rather than a stand-in for one. Otherwise the answer counts only
+  // while it is the answer to the addresses currently on screen. Both branches
+  // return a reference that is already stable, so no memo is needed to keep the
+  // caller's dependencies still.
+  return key === "" || answer.key === key ? answer.value : EMPTY;
 }
 
 /**
- * One shared instance, so the returned map is referentially stable while a
- * request is in flight — a fresh `new Map()` per call would give every render a
- * new value and defeat any memoisation downstream.
+ * One shared instance, so the empty answer is referentially stable — a fresh
+ * `new Map()` per call would give every render a new value and defeat any
+ * memoisation downstream.
  */
 const EMPTY: Map<string, IpEnrichment> = new Map();

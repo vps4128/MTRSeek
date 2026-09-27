@@ -401,8 +401,29 @@
    Rounding up keeps a ten-hop trace provably free of a scrollbar, and still
    cuts an eleventh row off partway — which is what tells a reader the table
    continues.
+
+   One column may wrap, so a row carrying a long organization name is two line
+   boxes rather than one. The cap is unchanged and remains a maximum: a trace
+   whose names are short — which is most of them — still shows ten hops with no
+   scrollbar at all, and a trace with several long names shows fewer, with the
+   same scrollbar an eleventh hop would have produced. Nothing is hidden.
    ============================================================================ */
 :root {
   --hop-row-height: calc(14px * 1.6 + 2 * var(--spacing-xs) + 1px);
   --hop-table-max-height: calc(var(--hop-row-height) * 11 + var(--spacing-xs));
+
+  /* The ASN column's ceiling, and the one place in the table where a value is
+     allowed onto a second line.
+
+     Organization names run long — "CHINA UNICOM China169 Backbone", "Alibaba
+     (US) Technology Co., Ltd." — and on one line that single column is wider
+     than the other eight together, which is what pushed the whole table into
+     horizontal scroll at the container width. Capped here, the column stops
+     setting the table's width and folds its longest values instead.
+
+     16rem clears the short names on one line ("AS13335 / Cloudflare, Inc.",
+     "AS15169 / Google LLC") and folds the long ones onto two. Raise it to wrap
+     less, lower it to wrap more; the component reads this and holds no number
+     of its own. */
+  --hop-asn-column-max-width: 16rem;
 }

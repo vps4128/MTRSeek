@@ -27,6 +27,17 @@ const TRACE: ParsedTrace = {
 
 const OTHER: ParsedTrace = { ...TRACE, hops: [{ index: 1 }, { index: 2 }] };
 
+/**
+ * A trace only one test writes.
+ *
+ * The store's cache is module state, so a test that saves a fixture another
+ * test has already saved is asking for a silent write — the same text twice is
+ * deliberately not a notification. A fixture nobody else touches is one the
+ * cache cannot already hold, which is what makes the notification tests below
+ * say the same thing whatever order they run in.
+ */
+const THIRD: ParsedTrace = { ...TRACE, hops: [{ index: 1 }, { index: 2 }, { index: 3 }] };
+
 /** A `sessionStorage` that can also be made to throw, as real ones do. */
 function fakeStorage(options: { throws?: boolean } = {}) {
   const entries = new Map<string, string>();
@@ -114,9 +125,34 @@ describe("the analysis hand-off", () => {
     expect(getTraceServerSnapshot()).toBeUndefined();
   });
 
-  it("subscribes without needing to be unsubscribed", () => {
-    const unsubscribe = subscribeToTrace();
-    expect(typeof unsubscribe).toBe("function");
-    expect(() => unsubscribe()).not.toThrow();
+  it("stops telling a subscriber once it has unsubscribed", () => {
+    const seen: number[] = [];
+    const unsubscribe = subscribeToTrace(() => seen.push(1));
+
+    saveTrace(THIRD);
+    expect(seen).toHaveLength(1);
+
+    unsubscribe();
+    saveTrace(TRACE);
+    expect(seen).toHaveLength(1);
+  });
+
+  it("says nothing when the same trace is saved twice", () => {
+    // The paste band stores on every successful submit, and a second submit of
+    // the same text has to cost nothing: the notification is what redraws the
+    // page, and redrawing it to the same pixels is the one thing the memoised
+    // snapshot exists to avoid.
+    saveTrace(TRACE);
+
+    const seen: number[] = [];
+    const unsubscribe = subscribeToTrace(() => seen.push(1));
+
+    saveTrace(TRACE);
+    expect(seen).toHaveLength(0);
+
+    saveTrace(OTHER);
+    expect(seen).toHaveLength(1);
+
+    unsubscribe();
   });
 });

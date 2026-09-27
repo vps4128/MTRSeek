@@ -1,7 +1,9 @@
+import { createSessionStore } from "@/lib/session-store";
+
 import type { Hop, ParsedTrace } from "./types";
 
 /**
- * Where a parsed trace waits between the homepage and the analysis page.
+ * Where a parsed trace waits between one submission and the next.
  *
  * `sessionStorage` rather than the URL: a trace is kilobytes of text, and
  * putting it in a query string would produce an unshareable link that breaks
@@ -9,9 +11,25 @@ import type { Hop, ParsedTrace } from "./types";
  * the right lifetime for free — the trace belongs to the tab that produced it,
  * and a new tab or a new paste starts clean.
  *
- * Every access is wrapped, because `sessionStorage` is not guaranteed to exist:
- * it throws outright in some privacy modes, and is absent during prerendering.
- * A failure here is a missing trace, never a broken page.
+ * ## Who writes it
+ *
+ * One writer: the paste band, which stores what it has just parsed on the way
+ * to showing it. That band is on the analysis page, directly above the results,
+ * so the write and the redraw are the same interaction — the store notifies the
+ * page's subscriber and the results below the band replace themselves, with no
+ * navigation and nothing to reload. The band used to live on the homepage and
+ * hand off by navigating, which is the one thing that no longer happens here.
+ *
+ * ## What is deliberately not stored
+ *
+ * Enrichment. What comes out of here is the parse result alone, so a database
+ * updated tomorrow changes tomorrow's page rather than a document that claims
+ * to be a trace. The looked-up columns are folded in at render time, on the way
+ * to the table.
+ *
+ * The mechanics — the memoised snapshot, the notification, the tolerance for a
+ * storage that refuses to be read — are `createSessionStore`'s. What is here is
+ * the key and the shape check.
  */
 
 const KEY = "routelens:analysis:v1";
@@ -45,91 +63,33 @@ function isParsedTrace(value: unknown): value is ParsedTrace {
   );
 }
 
+const store = createSessionStore<ParsedTrace>({
+  key: KEY,
+  isValid: isParsedTrace,
+});
+
+/** Stores a trace, and tells the analysis page there is a new one to draw. */
 export function saveTrace(trace: ParsedTrace): void {
-  try {
-    window.sessionStorage.setItem(KEY, JSON.stringify(trace));
-  } catch {
-    // Nothing to recover: the analysis page will show its empty state, which is
-    // the same thing it shows when no trace was ever submitted.
-  }
-}
-
-/** The stored text as a trace, or `null` if it is absent or not one. */
-function parseStored(raw: string | null): ParsedTrace | null {
-  if (raw === null) return null;
-
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return isParsedTrace(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-/** The raw stored text, or `null` when it cannot be reached at all. */
-function readRaw(): string | null {
-  try {
-    return window.sessionStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
-}
-
-/* ============================================================================
-   Reading it from a component
-   ----------------------------------------------------------------------------
-   The analysis page cannot read the trace while rendering: `sessionStorage`
-   does not exist on the server, so a read during render would put the trace in
-   the client's first pass and nothing in the server's, and React would answer
-   with a hydration mismatch.
-
-   So the store is exposed as the three functions `useSyncExternalStore` asks
-   for. React calls `getServerSnapshot` for the server render *and* for the
-   client's hydration pass, which is what makes the two agree; the real read
-   happens straight after, on the client, and the page fills in. Until then the
-   reader sees an empty page rather than a flash of "No analysis data" — the
-   empty state is a statement about the trace, and it would be a lie for the
-   first frame of a page that has one.
-   ============================================================================ */
-
-/**
- * Deliberately a no-op.
- *
- * Nothing else writes to this key while the analysis page is open — only the
- * homepage does, and it navigates here immediately afterwards. A page that did
- * want to react to another tab writing would need a `storage` event listener
- * here, and `sessionStorage` does not fire one.
- */
-export function subscribeToTrace(): () => void {
-  return () => {};
+  store.save(trace);
 }
 
 /**
- * The current trace, or `null` when there is none.
+ * Tells the subscriber when a trace is saved.
  *
- * Memoised on the raw stored string, because `useSyncExternalStore` compares
- * snapshots by identity and a fresh `JSON.parse` on every call would re-render
- * forever. Comparing the raw text rather than a version counter also means the
- * cache cannot go stale: any write changes the string, and a changed string is
- * a miss.
+ * Not a `storage` event listener: `storage` fires in *other* tabs, and
+ * `sessionStorage` does not fire one at all. The write that has to be noticed
+ * is this tab's own, which is why the notification comes from `saveTrace`.
  */
-let cachedRaw: string | null = null;
-let cachedValue: ParsedTrace | null = null;
-let cached = false;
+export function subscribeToTrace(listener: () => void): () => void {
+  return store.subscribe(listener);
+}
 
+/** The current trace, or `null` when there is none. */
 export function getTraceSnapshot(): ParsedTrace | null {
-  const raw = readRaw();
-
-  if (!cached || raw !== cachedRaw) {
-    cachedRaw = raw;
-    cachedValue = parseStored(raw);
-    cached = true;
-  }
-
-  return cachedValue;
+  return store.getSnapshot();
 }
 
 /** What the server renders, and what the client's first pass agrees with. */
 export function getTraceServerSnapshot(): undefined {
-  return undefined;
+  return store.getServerSnapshot();
 }

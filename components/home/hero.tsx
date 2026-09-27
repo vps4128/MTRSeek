@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Container } from "@/components/layout/container";
 import { MtrPreview } from "@/components/mtr/mtr-preview";
 import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 
 /**
  * DESIGN.md → Components · `hero-band`: canvas, 96px vertical padding, and a
@@ -45,13 +46,14 @@ export async function Hero() {
             </p>
 
             {/* The hero's job is to hand the reader to the input, not to run
-                anything. This is a plain in-page anchor to the trace input
-                below — no route change, no analysis, nothing submitted. The
-                input section's own button is the one that will start an
-                analysis. */}
+                anything. The input is the first thing on the analysis page, so
+                this is a link to that page rather than the in-page anchor it
+                used to be — nothing is submitted here, and the analysis page's
+                own button is still the one that starts an analysis. `Link`
+                rather than `next/link`, so the locale prefix comes along. */}
             <div className="mt-xl">
               <Button asChild>
-                <a href="#mtr-input">{t("analyze")}</a>
+                <Link href="/analysis">{t("analyze")}</Link>
               </Button>
             </div>
           </div>

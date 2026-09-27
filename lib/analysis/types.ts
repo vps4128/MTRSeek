@@ -8,13 +8,13 @@
  *
  * ## Parsed facts, and looked-up ones
  *
- * `isp`, `asn` and `location` are declared on `Hop` but are not parsed from
- * anything: no trace tool prints them, and they arrive from the enrichment
- * layer, which looks each address up in a GeoIP database.
+ * `asn` and `location` are declared on `Hop` but are not parsed from anything:
+ * no trace tool prints them, and they arrive from the enrichment layer, which
+ * looks each address up in a GeoIP database.
  *
  * The two kinds of data are kept apart by where they are allowed to live, not
  * by the type. `lib/parsers` writes only the measured fields and never touches
- * these three; `lib/enrichment` fills these three and never touches a
+ * these two; `lib/enrichment` fills these two and never touches a
  * measurement. §18 draws the same line from the outside: enrichment is not
  * allowed near Loss, RTT, Hostname, Hop index or the address itself, because a
  * lookup must not be able to change what was measured.
@@ -62,8 +62,10 @@ export type HopLocation = {
  * operator" and "the database knew only a number". The display joins what it
  * was given and shows `AS4134 / China Telecom`, or just the half it has.
  *
- * `organization` is the operator that holds the allocation. It is not an ISP
- * name and the two are not interchangeable — see `Hop.isp`.
+ * `organization` is the operator that holds the allocation, named as the
+ * database names it. It is an operator rather than a service — an AS is
+ * allocated, an ISP is sold over it — which is why the hop table calls the
+ * column ASN and does not offer an ISP one beside it.
  */
 export type HopAsn = {
   /** The number alone, so the display supplies the `AS` prefix. */
@@ -90,29 +92,12 @@ export type Hop = {
   hostname?: string;
 
   /**
-   * The access provider serving the address, when the database states one.
-   *
-   * Stayed empty through Phase 3, and deliberately. MaxMind's free GeoLite2
-   * databases carry no ISP field at all — that trait belongs to the paid
-   * GeoIP2 ISP product — so there is nothing here to read, and the hop table
-   * prints an em dash. The field exists because a database that does state an
-   * ISP should be believed; what must never happen is the substitution that
-   * would fill it today, copying `asn.organization` across. An AS is an
-   * allocation and an ISP is a service: an address announced by AS4134 may be
-   * served by anyone, and the two names agreeing for the large carriers is a
-   * coincidence of the Chinese market rather than a rule.
-   *
-   * Never inferred from the address.
-   */
-  isp?: string;
-
-  /**
    * The autonomous system the address is announced from.
    *
    * Filled by enrichment from a GeoLite2 ASN lookup. Never inferred from the
-   * address or from an ISP name — both directions of that inference run
-   * backwards, since one AS carries many providers and one provider spans many
-   * ASes.
+   * address — announcing an address is a fact a registry records, and one AS
+   * carries many providers while one provider spans many ASes, so neither
+   * direction of that guess survives being checked.
    */
   asn?: HopAsn;
 

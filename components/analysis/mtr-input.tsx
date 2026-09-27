@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useRouter } from "@/i18n/navigation";
 import { saveTrace } from "@/lib/analysis/storage";
 import type { ParseErrorCode } from "@/lib/analysis/types";
 import { detectTraceFormat } from "@/lib/mtr/format";
@@ -14,18 +13,39 @@ import { EXAMPLE_MTR_OUTPUT } from "@/lib/mock/trace";
 import { parseTrace } from "@/lib/parsers";
 
 /**
- * The homepage's primary action band, and the app's real entry point into the
- * analyser.
+ * The band a trace is pasted into, and the app's only way in.
  *
- * Submit runs the paste through `parseTrace` and only then decides where the
- * reader goes. A paste that parses is stored and handed to `/analysis`; a paste
- * that does not is answered here, under the textarea, with the text still in
- * it — so a failed attempt costs a correction rather than the whole paste, and
- * nobody is sent to an analysis page that has nothing to analyse.
+ * ## Why it is on the analysis page rather than the homepage
+ *
+ * It used to be the homepage's second band, with the hero's button scrolling
+ * down to it and the analysis page a separate destination that showed whatever
+ * had been pasted last. That put the two halves of one interaction on two
+ * pages: you pasted here and read there, and the only way to paste again was to
+ * go back. Both are now here — the band, and the results directly below it — so
+ * the homepage hands the reader over with a link and this page is the whole
+ * tool.
+ *
+ * ## Submitting does not navigate
+ *
+ * It parses, stores, and stops. The storage layer tells the analysis view below
+ * that there is a new trace, and the view redraws around it; the URL does not
+ * change and nothing remounts. A paste that does not parse never reaches
+ * storage at all — the error is answered here, under the textarea, with the
+ * text still in it, so a failed attempt costs a correction rather than the
+ * whole paste.
+ *
+ * ## Why it scrolls
+ *
+ * The band is roughly 550px of padding, heading and textarea, and the results
+ * are below it — on a laptop, below the fold. A successful submit that left the
+ * reader staring at the box they just submitted would look like nothing
+ * happened. `scrollIntoView` moves them to the first line of the answer, and
+ * the motion is whatever `scroll-behavior` the layout already sets, which is
+ * `auto` for readers who have asked for reduced motion. `scroll-mt-16` on the
+ * target keeps the sticky header off the top of it.
  */
 export function MtrInput() {
   const t = useTranslations("analyzer");
-  const router = useRouter();
   const [value, setValue] = useState("");
   const [error, setError] = useState<ParseErrorCode | null>(null);
   const format = detectTraceFormat(value);
@@ -40,12 +60,13 @@ export function MtrInput() {
 
     setError(null);
     saveTrace(result.trace);
-    router.push("/analysis");
+    document.getElementById("mtr-result")?.scrollIntoView();
   }
 
   return (
-    /* `id` is the hero button's scroll target; `scroll-mt-16` clears the 64px
-       sticky header so the heading is not left underneath it. */
+    /* `id` is the empty panel's target, and the target of its own error and
+       reset flows; `scroll-mt-16` clears the 64px sticky header so the heading
+       is not left underneath it. */
     <section id="mtr-input" className="scroll-mt-16 bg-surface-soft py-section">
       <Container>
         <h2 className="type-display-sm text-ink sm:type-display-md">
