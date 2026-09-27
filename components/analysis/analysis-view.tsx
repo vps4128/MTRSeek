@@ -10,9 +10,10 @@ import { HopDetails } from "@/components/analysis/hop-details";
 import { RouteSummary } from "@/components/analysis/route-summary";
 import { useEnrichment } from "@/components/analysis/use-enrichment";
 import {
-  getTraceServerSnapshot,
-  getTraceSnapshot,
-  subscribeToTrace,
+  getSubmissionServerSnapshot,
+  getSubmissionSnapshot,
+  subscribeToSubmission,
+  type Submission,
 } from "@/lib/analysis/storage";
 import { summarize } from "@/lib/analysis/summary";
 import type { ParsedTrace } from "@/lib/analysis/types";
@@ -79,11 +80,27 @@ import { resolveLocale } from "@/i18n/routing";
  * than each resolving it from the lookup map and being free to differ.
  */
 export function AnalysisView() {
-  const trace = useSyncExternalStore<ParsedTrace | null | undefined>(
-    subscribeToTrace,
-    getTraceSnapshot,
-    getTraceServerSnapshot,
+  // Only the trace half of the submission is read here. The text half belongs
+  // to the band above, which is the only thing that shows it, and pulling it
+  // out of storage twice would be two readers of one record with no way to
+  // notice if they stopped agreeing.
+  const submission = useSyncExternalStore<Submission | null | undefined>(
+    subscribeToSubmission,
+    getSubmissionSnapshot,
+    getSubmissionServerSnapshot,
   );
+
+  // Unfolded by hand rather than with `?.`, because the two absences this store
+  // distinguishes mean different things and `?.trace` would merge them: `null`
+  // is "nothing has been submitted" and draws the empty panel, `undefined` is
+  // "storage has not been read yet" and draws nothing at all. Collapsed, the
+  // empty panel would be unreachable and a first visit would render blank.
+  const trace =
+    submission === undefined
+      ? undefined
+      : submission === null
+        ? null
+        : submission.trace;
 
   // Both hooks are called before the early returns below, because a hook cannot
   // be skipped — `trace?.hops` is what lets the lookup hook be called
@@ -115,10 +132,15 @@ export function AnalysisView() {
     <>
       <AnalysisHeader trace={enriched} summary={summary} />
 
+      {/* The order the sections are read in. The hop table comes before the AS
+          path rather than after it: the table is the trace itself and the
+          route's shape is a reading of it, so the evidence precedes the summary
+          drawn from it. The AS path's own heading is what says so — it stands
+          on its own and needs nothing above it but the hops it describes. */}
       <div className="mt-xxl flex flex-col gap-xxl">
         <RouteSummary trace={enriched} summary={summary} />
-        <AsPath hops={enriched.hops} />
         <HopDetails trace={enriched} />
+        <AsPath hops={enriched.hops} />
       </div>
     </>
   );

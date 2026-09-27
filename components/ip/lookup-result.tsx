@@ -1,8 +1,20 @@
 "use client";
 
+import {
+  Building2,
+  CircleSlash,
+  Globe,
+  Info,
+  MapPin,
+  SearchX,
+  ServerCrash,
+  ShieldAlert,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
+import { Icon } from "@/components/ui/icon";
 import { EMPTY_VALUE, formatLocation } from "@/lib/analysis/format";
 import type { IpLookupOutcome } from "@/lib/enrichment/lookup";
 import { localizeCountry, localizeName } from "@/lib/enrichment/names";
@@ -163,15 +175,24 @@ type Shown =
  * mapping is exhaustive by construction: a status added to `IpLookupOutcome`
  * without a message here fails to compile, rather than falling through to a
  * blank card.
+ *
+ * The glyph is part of an entry rather than a second lookup, so a status cannot
+ * gain a message and keep someone else's mark — the two are added together or
+ * not at all. Each says what went wrong rather than how bad it is: a slash
+ * through a circle for text that was not an address, a shield for one that is
+ * not routable, a struck-out magnifier for an address no database answered for,
+ * and a broken server for the databases themselves being unreachable. That last
+ * one is the only failure that is the site's fault rather than the input's, and
+ * it is the only one whose glyph is a machine.
  */
 const NOTICE: Record<
   Exclude<IpLookupOutcome["status"], "empty" | "found">,
-  "invalid" | "notPublic" | "noRecord" | "unavailable"
+  { key: "invalid" | "notPublic" | "noRecord" | "unavailable"; icon: LucideIcon }
 > = {
-  invalid: "invalid",
-  "not-public": "notPublic",
-  "no-record": "noRecord",
-  unavailable: "unavailable",
+  invalid: { key: "invalid", icon: CircleSlash },
+  "not-public": { key: "notPublic", icon: ShieldAlert },
+  "no-record": { key: "noRecord", icon: SearchX },
+  unavailable: { key: "unavailable", icon: ServerCrash },
 };
 
 /**
@@ -285,24 +306,48 @@ function Answer({
           the Chinese and Latin labels can change length without the column
           needing to be re-tuned. */}
       <dl className="mt-md grid grid-cols-[auto_1fr] gap-x-sm gap-y-xs rounded-md bg-surface-dark-soft p-md type-code sm:gap-x-md">
-        <dt className="text-muted-soft">{t("ipLabel")}</dt>
+        {/* Three icons here, where the trace page's summary has none. These
+            three rows are three different kinds of fact — an address, an
+            operator, a place — and the glyph is the only thing on the card
+            that says so before the label is read. The muted `dt` colour is
+            inherited, so the icons sit at the weight of the labels they
+            belong to rather than at the weight of the values. */}
+        <dt className="flex items-center gap-1.5 text-muted-soft">
+          <Icon of={Globe} />
+          {t("ipLabel")}
+        </dt>
         <dd className="break-all text-on-dark">{enrichment.ip}</dd>
 
-        <dt className="text-muted-soft">{t("orgLabel")}</dt>
+        <dt className="flex items-center gap-1.5 text-muted-soft">
+          <Icon of={Building2} />
+          {t("orgLabel")}
+        </dt>
         <dd className="break-words text-on-dark">
           {/* Never translated: the database holds one spelling of an operator's
               name and this app has no second one to offer. */}
           {enrichment.asn?.organization ?? EMPTY_VALUE}
         </dd>
 
-        <dt className="text-muted-soft">{t("addressLabel")}</dt>
+        <dt className="flex items-center gap-1.5 text-muted-soft">
+          <Icon of={MapPin} />
+          {t("addressLabel")}
+        </dt>
         <dd className="break-words text-on-dark">{address}</dd>
       </dl>
 
       {/* Only beside a location, because that is what it is about. An address
           with no GeoIP record answered nothing about where it is, and there is
           no approximation to caveat. */}
-      {geo === undefined ? null : <p className={STRIP}>{t("approximate")}</p>}
+      {geo === undefined ? null : (
+        <p className={`${STRIP} flex items-start gap-1.5`}>
+          {/* `items-start`, not `items-center`: the sentence wraps to two lines
+              on a phone and an icon centred against a wrapped paragraph floats
+              between them. Aligned to the first line it reads as the start of
+              the sentence, which is what it is. */}
+          <Icon of={Info} className="mt-0.5" />
+          {t("approximate")}
+        </p>
+      )}
     </>
   );
 }
@@ -316,14 +361,17 @@ function Notice({
   detail?: string;
 }) {
   const t = useTranslations("ip");
-  const key = NOTICE[status];
+  const { key, icon } = NOTICE[status];
 
   return (
     <div className={OUTPUT}>
       {/* Body type, not `type-code`. The answers on this card are data; this is
           a sentence about the data, and setting it in the mono face would make
           a diagnosis look like output. */}
-      <h2 className="type-title-sm text-on-dark">{t(`notices.${key}`)}</h2>
+      <h2 className="flex items-center gap-1.5 type-title-sm text-on-dark">
+        <Icon of={icon} />
+        {t(`notices.${key}`)}
+      </h2>
       <p className="mt-xs type-body-sm text-on-dark-soft">
         {t(`notices.${key}Description`)}
       </p>

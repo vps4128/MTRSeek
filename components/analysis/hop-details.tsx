@@ -1,5 +1,7 @@
+import { ListOrdered } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { Icon } from "@/components/ui/icon";
 import {
   EMPTY_VALUE,
   formatAsn,
@@ -22,18 +24,22 @@ import type { Hop, ParsedTrace } from "@/lib/analysis/types";
  * a phone, and a wrapped IP address or a split RTT is worse than a scroll. The
  * overflow lives on the inner card, so the page itself never scrolls sideways.
  *
- * Past ten hops it scrolls downwards too, and the table box stops growing. A
- * traceroute to a distant target is thirty rows; laid out in full it buries the
- * sections below it under a wall of numbers, and cut off at ten with no way
- * further it would be lying about the route. So the viewport is capped (see
- * `--hop-table-max-height` in globals.css for where the number comes from) and
- * the header sticks to its top, so a row is always read against its column
- * names. Ten hops or fewer produce no scrollbar at all — the cap is a maximum,
- * not a height.
+ * Downwards it does not scroll at all: every hop is laid out and the page grows
+ * to fit them. The table used to stop at ten rows and scroll the rest inside a
+ * capped box, on the argument that thirty rows of numbers would bury the
+ * sections below. That traded the reader's route for the page's tidiness, and
+ * it cost them the one thing this table is for — a trace read end to end, which
+ * is how a route is actually diagnosed. So the cap is gone and the whole trace
+ * is on the page; ten hops or a hundred, the reader scrolls the document like
+ * they would any other page.
  *
- * The two axes share one scroller, and the card's padding sits outside it. That
- * is what keeps the sticky header clean: were the padding inside, scrolled rows
- * would show through the gap above it.
+ * With no vertical scrolling there is nothing for the header to stick to, so it
+ * is an ordinary header row again. `sticky` there was never about the page: it
+ * held the column names against rows scrolling underneath them inside the box,
+ * and the box no longer scrolls that way.
+ *
+ * The horizontal axis is untouched, and the card's padding still sits outside
+ * the scroller so a scrolled row cannot show through the gap beside it.
  *
  * The columns answer two questions about a hop — whose network it is, and where
  * that network is — alongside what it measured. The first two are the looked-up
@@ -76,8 +82,8 @@ type Column = {
    * table's width on its own.
    *
    * Unset — which is every column but ASN — keeps the value on one line, so a
-   * row is one line tall and the scroll viewport's arithmetic in `globals.css`
-   * holds for it.
+   * row is one line tall wherever it can be, and the table is as narrow as its
+   * contents allow.
    */
   wrapAt?: string;
 };
@@ -112,19 +118,28 @@ export function HopDetails({ trace }: { trace: ParsedTrace }) {
 
   return (
     <section aria-labelledby="hop-details-heading">
-      <h2 id="hop-details-heading" className="type-title-sm text-ink">
+      {/* One icon for the section and none for the nine columns. A glyph over
+          each column would be a second header row saying what the first one
+          already says, and the columns are already one line of short labels a
+          reader takes in at a glance. */}
+      <h2
+        id="hop-details-heading"
+        className="flex items-center gap-1.5 type-title-sm text-ink"
+      >
+        <Icon of={ListOrdered} />
         {t("title")}
       </h2>
 
       <div className="mt-lg rounded-lg bg-surface-dark p-lg">
         <div className="rounded-md bg-surface-dark-soft p-md">
           {/* Focusable and named, because a scroll region a keyboard cannot
-              reach is a table a keyboard cannot read. */}
+              reach is a table a keyboard cannot read. Horizontal only: the
+              table grows downwards with the trace and the page scrolls. */}
           <div
             role="region"
             aria-labelledby="hop-details-heading"
             tabIndex={0}
-            className="max-h-[var(--hop-table-max-height)] overflow-auto"
+            className="overflow-x-auto"
           >
             <table className="w-full min-w-max border-collapse text-left type-code">
               <caption className="sr-only">{t("title")}</caption>
@@ -134,7 +149,7 @@ export function HopDetails({ trace }: { trace: ParsedTrace }) {
                     <th
                       key={column.key}
                       scope="col"
-                      className="sticky top-0 z-10 border-b border-surface-dark-elevated bg-surface-dark-soft py-xs pr-lg font-normal whitespace-nowrap"
+                      className="border-b border-surface-dark-elevated py-xs pr-lg font-normal whitespace-nowrap"
                     >
                       {column.label}
                     </th>

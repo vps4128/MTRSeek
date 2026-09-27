@@ -1,6 +1,8 @@
+import { ArrowUp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 
 /**
  * `/analysis` with nothing to analyse.
@@ -29,8 +31,13 @@ export function EmptyPanel() {
       </p>
 
       <div className="mt-lg">
+        {/* An up arrow, because the paste band is above this panel — the one
+            direction this button has ever gone. */}
         <Button asChild variant="secondary">
-          <a href="#mtr-input">{t("back")}</a>
+          <a href="#mtr-input">
+            <Icon of={ArrowUp} />
+            {t("back")}
+          </a>
         </Button>
       </div>
     </div>

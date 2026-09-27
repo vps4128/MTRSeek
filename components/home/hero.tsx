@@ -1,8 +1,10 @@
+import { ArrowRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { Container } from "@/components/layout/container";
 import { MtrPreview } from "@/components/mtr/mtr-preview";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Link } from "@/i18n/navigation";
 
 /**
@@ -53,7 +55,14 @@ export async function Hero() {
                 rather than `next/link`, so the locale prefix comes along. */}
             <div className="mt-xl">
               <Button asChild>
-                <Link href="/analysis">{t("analyze")}</Link>
+                <Link href="/analysis">
+                  {t("analyze")}
+                  {/* The one arrow on the site, and only here: this button is
+                      the only control that leaves the page it is on. The
+                      analysis page's own button runs something and stays put,
+                      which is why it carries a play mark and not this one. */}
+                  <Icon of={ArrowRight} />
+                </Link>
               </Button>
             </div>
           </div>

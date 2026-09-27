@@ -11,8 +11,34 @@
   },
   "nav": {
     "label": "主导航",
+    "home": "首页",
     "mtrAnalysis": "MTR 分析",
-    "ipLookup": "IP 归属地查询"
+    "ipLookup": "IP 归属地查询",
+    "subnetCalculator": "子网计算器"
+  },
+  "subnet": {
+    "title": "子网掩码计算器",
+    "description": "输入一个 IPv4 CIDR，例如 192.168.1.0/24，立即得到子网掩码、网络地址、广播地址与可用主机范围。",
+    "label": "IPv4 CIDR",
+    "placeholder": "192.168.1.0/24",
+    "resultTitle": "子网计算结果",
+    "idle": "在左侧输入一个 CIDR，这里会显示它的八项结果。",
+    "rows": {
+      "address": "IP 地址",
+      "mask": "子网掩码",
+      "cidr": "CIDR",
+      "network": "网络地址",
+      "broadcast": "广播地址",
+      "range": "可用主机范围",
+      "hosts": "可用主机数量",
+      "wildcard": "通配符掩码"
+    },
+    "problems": {
+      "badAddress": "地址格式不正确",
+      "badAddressDescription": "IPv4 地址需要四段 0–255 的数字，例如 192.168.1.0。带前导零的写法（如 010）含义有歧义，这里不接受。",
+      "badPrefix": "前缀长度不正确",
+      "badPrefixDescription": "斜杠后面需要 0–32 之间的整数，例如 /24。省略前缀不会默认按 /32 计算。"
+    }
   },
   "ip": {
     "title": "IP 归属地查询",

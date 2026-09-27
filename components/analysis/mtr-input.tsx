@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { ClipboardPaste, Play } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Textarea } from "@/components/ui/textarea";
-import { saveTrace } from "@/lib/analysis/storage";
+import {
+  getSubmissionServerSnapshot,
+  getSubmissionSnapshot,
+  saveSubmission,
+  subscribeToSubmission,
+  type Submission,
+} from "@/lib/analysis/storage";
 import type { ParseErrorCode } from "@/lib/analysis/types";
 import { detectTraceFormat } from "@/lib/mtr/format";
 import { EXAMPLE_MTR_OUTPUT } from "@/lib/mock/trace";
@@ -43,11 +51,42 @@ import { parseTrace } from "@/lib/parsers";
  * the motion is whatever `scroll-behavior` the layout already sets, which is
  * `auto` for readers who have asked for reduced motion. `scroll-mt-16` on the
  * target keeps the sticky header off the top of it.
+ *
+ * ## Why the box refills itself
+ *
+ * Stepping over to the lookup page and back used to cost the reader their
+ * paste: the results returned, because they were stored, and the text that
+ * produced them did not. The two are now stored together, so both come back and
+ * the reader can trim a line and submit again without pasting again.
+ *
+ * The value shown is `draft ?? remembered ?? ""`, and the three states are the
+ * reason for that order. `draft` is `null` until the reader types, which is
+ * what lets the remembered paste show through on arrival; the moment they type
+ * it wins, and it keeps winning — including when what they typed is the empty
+ * string. Clearing the box has to stay cleared, which is why the fallback is
+ * written with `??` and not `||`.
+ *
+ * Reading the store through `useSyncExternalStore` rather than seeding state in
+ * an effect is what keeps hydration honest. The server renders the third state
+ * — nothing remembered — because that is the only one it can know, and the
+ * client's first pass is handed the same answer; the remembered paste arrives
+ * on the render after that. A `useState` initialiser reading storage directly
+ * would disagree with the server for one frame instead, and React would throw
+ * the server's markup away and re-render the whole page.
  */
 export function MtrInput() {
   const t = useTranslations("analyzer");
-  const [value, setValue] = useState("");
   const [error, setError] = useState<ParseErrorCode | null>(null);
+
+  const submission = useSyncExternalStore<Submission | null | undefined>(
+    subscribeToSubmission,
+    getSubmissionSnapshot,
+    getSubmissionServerSnapshot,
+  );
+
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? submission?.text ?? "";
+
   const format = detectTraceFormat(value);
 
   function handleAnalyze() {
@@ -59,7 +98,7 @@ export function MtrInput() {
     }
 
     setError(null);
-    saveTrace(result.trace);
+    saveSubmission({ text: value, trace: result.trace });
     document.getElementById("mtr-result")?.scrollIntoView();
   }
 
@@ -79,7 +118,7 @@ export function MtrInput() {
         <Textarea
           value={value}
           onChange={(event) => {
-            setValue(event.target.value);
+            setDraft(event.target.value);
             setError(null);
           }}
           aria-label={t("inputLabel")}
@@ -102,7 +141,10 @@ export function MtrInput() {
 
         <div className="mt-lg flex flex-wrap items-center justify-between gap-md">
           <div className="flex flex-wrap items-center gap-md">
+            {/* A play mark, not the arrow the hero's button carries: this one
+                runs the parse and the page stays where it is. */}
             <Button onClick={handleAnalyze} disabled={value.trim().length === 0}>
+              <Icon of={Play} />
               {t("analyze")}
             </Button>
             {format ? (
@@ -112,7 +154,8 @@ export function MtrInput() {
             ) : null}
           </div>
 
-          <Button variant="secondary" onClick={() => setValue(EXAMPLE_MTR_OUTPUT)}>
+          <Button variant="secondary" onClick={() => setDraft(EXAMPLE_MTR_OUTPUT)}>
+            <Icon of={ClipboardPaste} />
             {t("loadExample")}
           </Button>
         </div>

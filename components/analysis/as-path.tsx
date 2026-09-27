@@ -1,5 +1,7 @@
+import { Waypoints } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { Icon } from "@/components/ui/icon";
 import { buildAsPath, type AsPathSegment } from "@/lib/analysis/as-path";
 import type { Hop } from "@/lib/analysis/types";
 
@@ -11,8 +13,10 @@ import type { Hop } from "@/lib/analysis/types";
  * page than the whole hop table it summarises, so it gets a heading, the
  * sentence that says where the numbers came from, and no box.
  *
+ * It follows the hop table rather than preceding it, which is the order its own
+ * subject implies: the table is the trace, and this line is one reading of it.
  * The numbers are folded from the hops by `buildAsPath` and nothing else — the
- * same enriched hops the table below renders, so a row and a segment can never
+ * same enriched hops the table above renders, so a row and a segment can never
  * disagree. What that produces is an observation of this trace rather than a
  * BGP AS path, which is what the sentence above the line is there to say: the
  * section shows what the trace reached, not what the routing table announces,
@@ -31,7 +35,11 @@ export function AsPath({ hops }: { hops: Hop[] }) {
 
   return (
     <section aria-labelledby="as-path-heading">
-      <h2 id="as-path-heading" className="type-title-sm text-ink">
+      <h2
+        id="as-path-heading"
+        className="flex items-center gap-1.5 type-title-sm text-ink"
+      >
+        <Icon of={Waypoints} />
         {t("title")}
       </h2>
 

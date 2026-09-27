@@ -1,5 +1,7 @@
+import { Activity } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { Icon } from "@/components/ui/icon";
 import { formatLoss, SOURCE_LABELS } from "@/lib/analysis/format";
 import type { RouteSummary } from "@/lib/analysis/summary";
 import type { ParsedTrace } from "@/lib/analysis/types";
@@ -31,7 +33,8 @@ export function AnalysisHeader({
 
   return (
     <header>
-      <p className="type-caption-uppercase text-muted-foreground">
+      <p className="flex items-center gap-1.5 type-caption-uppercase text-muted-foreground">
+        <Icon of={Activity} />
         {t("eyebrow")}
       </p>
 

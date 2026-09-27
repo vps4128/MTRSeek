@@ -1,7 +1,9 @@
 "use client";
 
+import { Globe, House, Network, Route } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { Link, usePathname } from "@/i18n/navigation";
 
@@ -34,8 +36,13 @@ import { Link, usePathname } from "@/i18n/navigation";
  * for the rest — DESIGN.md's `category-tab-active`. The comparison is against
  * `usePathname` inside the loop rather than a flag passed in per entry, so an
  * entry cannot be added without also being able to light up, and no entry can
- * be marked current by hand. On the home page none of them is current, which is
- * right: the wordmark is what that page is.
+ * be marked current by hand.
+ *
+ * That now includes the home page, where 「首页」 lights up like any other
+ * entry. Before it was a destination the home page lit nothing, and the note
+ * here said so was right because the wordmark was what that page was. It is a
+ * destination now, and a group of peers where one of them is silently exempt is
+ * a group a reader has to have been told about.
  *
  * ## Why it is a client component
  *
@@ -50,10 +57,21 @@ import { Link, usePathname } from "@/i18n/navigation";
  *
  * `as const` so `href` narrows to the literal routes the typed `Link` accepts,
  * rather than widening to `string` and failing to compile against it.
+ *
+ * The glyph is carried here rather than chosen inside the loop, so the four
+ * entries' marks are read as one list — a house, a route, a globe, a network —
+ * instead of four decisions made in four places. It is also what ties an icon to
+ * a label that a translator may change: the entry keeps its mark in both
+ * languages.
+ *
+ * The subnet entry's glyph is the same one that tool's own field label carries,
+ * which is what the IP entry and the IP page already do between them.
  */
 const DESTINATIONS = [
-  { href: "/analysis", label: "mtrAnalysis" },
-  { href: "/ip", label: "ipLookup" },
+  { href: "/", label: "home", icon: House },
+  { href: "/analysis", label: "mtrAnalysis", icon: Route },
+  { href: "/ip", label: "ipLookup", icon: Globe },
+  { href: "/subnet", label: "subnetCalculator", icon: Network },
 ] as const;
 
 export function MainNav() {
@@ -68,7 +86,7 @@ export function MainNav() {
       aria-label={t("label")}
       className="mt-xs flex flex-wrap items-center gap-xs sm:mt-sm"
     >
-      {DESTINATIONS.map(({ href, label }) => {
+      {DESTINATIONS.map(({ href, label, icon }) => {
         const isActive = pathname === href;
 
         return (
@@ -77,10 +95,14 @@ export function MainNav() {
             href={href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "rounded-md px-2 py-1 font-display type-title-md whitespace-nowrap sm:px-3",
+              "inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-display type-title-md whitespace-nowrap sm:px-3",
               isActive ? "bg-surface-card text-ink" : "text-muted-foreground",
             )}
           >
+            {/* No colour of its own: the icon inherits from the link, so the
+                current entry's glyph lights up with its label and the other two
+                stay muted with theirs. One `isActive` decides for both. */}
+            <Icon of={icon} />
             {t(label)}
           </Link>
         );

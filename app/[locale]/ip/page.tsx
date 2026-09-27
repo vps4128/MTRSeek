@@ -1,11 +1,13 @@
+import { Globe, Search } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { LookupResult } from "@/components/ip/lookup-result";
+import { QueryField } from "@/components/ip/query-field";
 import { Container } from "@/components/layout/container";
 import { TopNav } from "@/components/navigation/top-nav";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Icon } from "@/components/ui/icon";
 import { getPathname } from "@/i18n/navigation";
 import { resolveLocale } from "@/i18n/routing";
 import { lookupIpAddress } from "@/lib/enrichment/lookup";
@@ -138,36 +140,33 @@ export default async function IpPage({
                 action={getPathname({ href: "/ip", locale: current })}
                 className="mt-xl"
               >
+                {/* The icon goes on the label rather than inside the field.
+                    `text-input` is a fixed 40px box with 10×14 padding in
+                    DESIGN.md, and a glyph placed within it would mean this page
+                    reaching into a component whose geometry it does not own. */}
                 <label
                   htmlFor="ip-query"
-                  className="block type-body-sm font-medium text-ink"
+                  className="flex items-center gap-1.5 type-body-sm font-medium text-ink"
                 >
+                  <Icon of={Globe} />
                   {t("label")}
                 </label>
 
-                <Input
-                  id="ip-query"
-                  name="q"
-                  defaultValue={query}
-                  placeholder={t("placeholder")}
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  /* An arbitrary width rather than `max-w-md`: this project's
-                     `@theme` redefines the `--spacing-*` scale, so the named
-                     `max-w-*` sizes resolve against it and `max-w-md` is 16px,
-                     not Tailwind's 28rem. Wide enough for the longest IPv6
-                     address and its placeholder, and capped so that a field
-                     whose content is an address does not run the full width of
-                     its column. Below `sm` it takes the column's own width,
-                     which on a phone is narrower than the cap anyway. */
-                  className="mt-xs sm:max-w-[24rem]"
-                />
+                {/* A client component for one reason: it refills itself with
+                    the last address this tab looked up when the URL is asking
+                    nothing. The form around it is still a plain GET and still
+                    needs no JavaScript. Its own file carries the argument,
+                    including why the width below is arbitrary rather than
+                    `max-w-md`. */}
+                <QueryField query={query} />
 
                 {/* The button hugs its label, as the hero's does, rather than
                     filling the field's width. */}
                 <div className="mt-md">
-                  <Button type="submit">{t("submit")}</Button>
+                  <Button type="submit">
+                    <Icon of={Search} />
+                    {t("submit")}
+                  </Button>
                 </div>
               </form>
             </div>

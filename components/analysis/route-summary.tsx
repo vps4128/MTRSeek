@@ -1,5 +1,7 @@
+import { Gauge } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { Icon } from "@/components/ui/icon";
 import {
   EMPTY_VALUE,
   formatCount,
@@ -46,7 +48,15 @@ export function RouteSummary({
 
   return (
     <section aria-labelledby="route-summary-heading">
-      <h2 id="route-summary-heading" className="type-title-sm text-ink">
+      {/* The heading carries the only icon in this section. The six rows below
+          are five measurements and the target they were taken against, and a
+          glyph repeated down a list of short unambiguous labels would be a
+          bullet point rather than information. */}
+      <h2
+        id="route-summary-heading"
+        className="flex items-center gap-1.5 type-title-sm text-ink"
+      >
+        <Icon of={Gauge} />
         {t("title")}
       </h2>
 

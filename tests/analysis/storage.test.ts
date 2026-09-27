@@ -1,20 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  getTraceServerSnapshot,
-  getTraceSnapshot,
-  saveTrace,
-  subscribeToTrace,
+  getSubmissionServerSnapshot,
+  getSubmissionSnapshot,
+  saveSubmission,
+  subscribeToSubmission,
+  type Submission,
 } from "@/lib/analysis/storage";
 import type { ParsedTrace } from "@/lib/analysis/types";
 
 /**
  * The read side of the hand-off.
  *
- * `getTraceSnapshot` is the only stateful code on the UI path — it memoises so
- * `useSyncExternalStore` does not re-render forever — so the cache is what
- * these tests are really about: it has to return the same object for the same
- * stored text, and it has to notice when the text changes.
+ * `getSubmissionSnapshot` is the only stateful code on the UI path — it
+ * memoises so `useSyncExternalStore` does not re-render forever — so the cache
+ * is what these tests are really about: it has to return the same object for
+ * the same stored text, and it has to notice when the text changes.
+ *
+ * A submission is a paste and the trace it parsed into. Most of what is here
+ * exercises the trace half, because that is the half with a shape to check; the
+ * text half is a string, and the test that matters for it is the one saying the
+ * two travel together or not at all.
  */
 
 const KEY = "routelens:analysis:v1";
@@ -25,10 +31,15 @@ const TRACE: ParsedTrace = {
   hops: [{ index: 1, ip: "192.168.1.1", loss: 0, avg: 1.1 }],
 };
 
-const OTHER: ParsedTrace = { ...TRACE, hops: [{ index: 1 }, { index: 2 }] };
+const PASTE: Submission = { text: "mtr -rw example.com\n", trace: TRACE };
+
+const OTHER: Submission = {
+  text: "traceroute example.org\n",
+  trace: { ...TRACE, hops: [{ index: 1 }, { index: 2 }] },
+};
 
 /**
- * A trace only one test writes.
+ * A submission only one test writes.
  *
  * The store's cache is module state, so a test that saves a fixture another
  * test has already saved is asking for a silent write — the same text twice is
@@ -36,7 +47,10 @@ const OTHER: ParsedTrace = { ...TRACE, hops: [{ index: 1 }, { index: 2 }] };
  * cache cannot already hold, which is what makes the notification tests below
  * say the same thing whatever order they run in.
  */
-const THIRD: ParsedTrace = { ...TRACE, hops: [{ index: 1 }, { index: 2 }, { index: 3 }] };
+const THIRD: Submission = {
+  text: "traceroute example.net\n",
+  trace: { ...TRACE, hops: [{ index: 1 }, { index: 2 }, { index: 3 }] },
+};
 
 /** A `sessionStorage` that can also be made to throw, as real ones do. */
 function fakeStorage(options: { throws?: boolean } = {}) {
@@ -74,27 +88,27 @@ afterEach(() => {
 
 describe("the analysis hand-off", () => {
   it("finds nothing before anything is submitted", () => {
-    expect(getTraceSnapshot()).toBeNull();
+    expect(getSubmissionSnapshot()).toBeNull();
   });
 
-  it("reads back what `saveTrace` wrote", () => {
-    saveTrace(TRACE);
-    expect(getTraceSnapshot()).toEqual(TRACE);
+  it("reads back what `saveSubmission` wrote, text and trace together", () => {
+    saveSubmission(PASTE);
+    expect(getSubmissionSnapshot()).toEqual(PASTE);
   });
 
   it("returns the same object for unchanged text", () => {
     // Identity, not equality: `useSyncExternalStore` compares snapshots with
     // `Object.is`, so a fresh parse on every call is an infinite render loop.
-    saveTrace(TRACE);
-    expect(getTraceSnapshot()).toBe(getTraceSnapshot());
+    saveSubmission(PASTE);
+    expect(getSubmissionSnapshot()).toBe(getSubmissionSnapshot());
   });
 
   it("notices a second submission", () => {
-    saveTrace(TRACE);
-    const first = getTraceSnapshot();
+    saveSubmission(PASTE);
+    const first = getSubmissionSnapshot();
 
-    saveTrace(OTHER);
-    const second = getTraceSnapshot();
+    saveSubmission(OTHER);
+    const second = getSubmissionSnapshot();
 
     expect(second).not.toBe(first);
     expect(second).toEqual(OTHER);
@@ -102,13 +116,25 @@ describe("the analysis hand-off", () => {
 
   it("does not hand back data it cannot vouch for", () => {
     storage.entries.set(KEY, "not json");
-    expect(getTraceSnapshot()).toBeNull();
+    expect(getSubmissionSnapshot()).toBeNull();
 
     storage.entries.set(KEY, JSON.stringify({ source: "mtr" }));
-    expect(getTraceSnapshot()).toBeNull();
+    expect(getSubmissionSnapshot()).toBeNull();
   });
 
-  it("treats unreachable storage as no trace, never as an error", () => {
+  it("rejects half a submission rather than rendering one", () => {
+    // Both of these are what a partially-written record would look like. The
+    // text without its trace would put a full textarea above an empty results
+    // panel — a state the page has no message for — and the trace without its
+    // text would empty a box the reader had just filled.
+    storage.entries.set(KEY, JSON.stringify({ text: "mtr -rw example.com" }));
+    expect(getSubmissionSnapshot()).toBeNull();
+
+    storage.entries.set(KEY, JSON.stringify({ trace: TRACE }));
+    expect(getSubmissionSnapshot()).toBeNull();
+  });
+
+  it("treats unreachable storage as no submission, never as an error", () => {
     const blocked = fakeStorage({ throws: true });
     Object.defineProperty(globalThis, "window", {
       value: { sessionStorage: blocked },
@@ -116,41 +142,41 @@ describe("the analysis hand-off", () => {
       writable: true,
     });
 
-    expect(() => saveTrace(TRACE)).not.toThrow();
-    expect(getTraceSnapshot()).toBeNull();
+    expect(() => saveSubmission(PASTE)).not.toThrow();
+    expect(getSubmissionSnapshot()).toBeNull();
   });
 
   it("renders nothing on the server, which is what makes hydration agree", () => {
-    saveTrace(TRACE);
-    expect(getTraceServerSnapshot()).toBeUndefined();
+    saveSubmission(PASTE);
+    expect(getSubmissionServerSnapshot()).toBeUndefined();
   });
 
   it("stops telling a subscriber once it has unsubscribed", () => {
     const seen: number[] = [];
-    const unsubscribe = subscribeToTrace(() => seen.push(1));
+    const unsubscribe = subscribeToSubmission(() => seen.push(1));
 
-    saveTrace(THIRD);
+    saveSubmission(THIRD);
     expect(seen).toHaveLength(1);
 
     unsubscribe();
-    saveTrace(TRACE);
+    saveSubmission(PASTE);
     expect(seen).toHaveLength(1);
   });
 
-  it("says nothing when the same trace is saved twice", () => {
+  it("says nothing when the same submission is saved twice", () => {
     // The paste band stores on every successful submit, and a second submit of
     // the same text has to cost nothing: the notification is what redraws the
     // page, and redrawing it to the same pixels is the one thing the memoised
     // snapshot exists to avoid.
-    saveTrace(TRACE);
+    saveSubmission(PASTE);
 
     const seen: number[] = [];
-    const unsubscribe = subscribeToTrace(() => seen.push(1));
+    const unsubscribe = subscribeToSubmission(() => seen.push(1));
 
-    saveTrace(TRACE);
+    saveSubmission(PASTE);
     expect(seen).toHaveLength(0);
 
-    saveTrace(OTHER);
+    saveSubmission(OTHER);
     expect(seen).toHaveLength(1);
 
     unsubscribe();

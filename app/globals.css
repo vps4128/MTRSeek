@@ -383,35 +383,15 @@
 }
 
 /* ============================================================================
-   Hop Details scroll viewport
+   Hop Details
    ----------------------------------------------------------------------------
-   A long trace is read by scrolling rather than by paging, so the hop table
-   stops growing at ten rows and scrolls past that. These two values are the
-   whole of that decision; the component reads `--hop-table-max-height` and
-   nothing else, and no script measures anything at runtime.
-
-   Both are derived rather than guessed. A hop row is `type-code`'s line box —
-   14px at its 1.6 leading — plus the `py-xs` its cells carry, plus the hairline
-   its top edge draws. The viewport is that row eleven times over: the header,
-   which is a row of the same height, and the ten hops below it.
-
-   The `xs` step on top is headroom, not decoration. A header row draws no
-   hairline, so it is a pixel shorter than a hop row, and eleven fractional line
-   boxes land the exact edge within a pixel of the eleven-row mark either way.
-   Rounding up keeps a ten-hop trace provably free of a scrollbar, and still
-   cuts an eleventh row off partway — which is what tells a reader the table
-   continues.
-
-   One column may wrap, so a row carrying a long organization name is two line
-   boxes rather than one. The cap is unchanged and remains a maximum: a trace
-   whose names are short — which is most of them — still shows ten hops with no
-   scrollbar at all, and a trace with several long names shows fewer, with the
-   same scrollbar an eleventh hop would have produced. Nothing is hidden.
+   The table has one value to keep in step with it. It used to have three: the
+   hop table's height was capped at ten rows and scrolled inside that box, and
+   the cap was derived from a row's measured height. The whole trace is laid out
+   now and the page scrolls, so both of those are gone and the table has no
+   height of its own at all.
    ============================================================================ */
 :root {
-  --hop-row-height: calc(14px * 1.6 + 2 * var(--spacing-xs) + 1px);
-  --hop-table-max-height: calc(var(--hop-row-height) * 11 + var(--spacing-xs));
-
   /* The ASN column's ceiling, and the one place in the table where a value is
      allowed onto a second line.
 
