@@ -1,0 +1,45 @@
+# What the image build does not need to be sent.
+#
+# The build context is the working directory, not the git index, so everything
+# here would otherwise be uploaded to the daemon on every build — including the
+# files `.gitignore` covers. This list is deliberately short: it names the
+# things that are large, secret, or specific to this machine, and leaves the
+# rest alone so that nothing the build might reach for goes missing.
+
+# Dependencies and build output. The builder stage runs `npm ci` and
+# `next build` itself, so a host copy could only be overwritten — and a host
+# `.next` compiled for macOS would be a real hazard if it survived the copy.
+node_modules
+.next
+out
+build
+
+# Environment files. This is the reason the file matters most: `.env.local`
+# holds the MaxMind paths and the map style URL on this machine, and anything
+# present before `next build` is baked into the image where anyone who pulls it
+# can read it. The container is configured with `docker run -e` instead.
+.env*
+!.env.example
+
+# MaxMind databases — deployment data rather than source, licensed to whoever
+# downloaded them, and tens of megabytes each. The image ships without them and
+# reads them from a mounted volume, which is what MAXMIND_ASN_DB_PATH and
+# MAXMIND_CITY_DB_PATH are for.
+data/geoip
+*.mmdb
+
+coverage
+
+# Editor and tooling caches, plus this file and the Dockerfile itself — none of
+# which `next build` opens.
+.git
+.gitignore
+.DS_Store
+*.tsbuildinfo
+Dockerfile
+.dockerignore
+
+# Documentation. Kept out so that editing the design notes does not invalidate
+# the layer that `npm ci` produces.
+docs
+*.md
